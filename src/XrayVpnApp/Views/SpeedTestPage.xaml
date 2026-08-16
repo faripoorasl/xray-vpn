@@ -1,0 +1,86 @@
+<UserControl x:Class="XrayVpnApp.Views.SpeedTestPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource BackgroundBrush}">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="{DynamicResource TabSpeedTest}"
+                   Style="{StaticResource HeaderTextStyle}" Margin="0,0,0,16"/>
+
+        <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}"
+                CornerRadius="4" Padding="20"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource ConnectedServer}"
+                           VerticalAlignment="Center" Margin="0,0,12,16"/>
+                <ComboBox Grid.Row="0" Grid.Column="1"
+                          x:Name="ServerCombo"
+                          ItemsSource="{Binding Servers}"
+                          DisplayMemberPath="Remark"
+                          SelectedItem="{Binding SelectedServer}"
+                          Margin="0,0,0,16"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource ColLatency}"
+                           VerticalAlignment="Center" Margin="0,0,12,16"/>
+                <TextBlock Grid.Row="1" Grid.Column="1"
+                           x:Name="LatencyLabel" Text="—"
+                           FontSize="18" FontWeight="SemiBold"
+                           Foreground="{StaticResource PrimaryBrush}"
+                           Margin="0,0,0,16"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{DynamicResource DownloadSpeedResult}"
+                           VerticalAlignment="Center" Margin="0,0,12,16"/>
+                <TextBlock Grid.Row="2" Grid.Column="1"
+                           x:Name="SpeedLabel" Text="—"
+                           FontSize="18" FontWeight="SemiBold"
+                           Foreground="{StaticResource SuccessBrush}"
+                           Margin="0,0,0,16"/>
+
+                <ProgressBar Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                             x:Name="TestProgress" Height="6" Margin="0,0,0,16"/>
+
+                <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2"
+                            Orientation="Horizontal">
+                    <Button Content="{DynamicResource TestLatency}"
+                            Click="TestLatency_Click"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Padding="20,8" Margin="0,0,12,0"/>
+                    <Button Content="{DynamicResource TestDownload}"
+                            Click="TestDownload_Click"
+                            Style="{StaticResource SuccessButtonStyle}"
+                            Padding="20,8" Margin="0,0,12,0"/>
+                    <Button Content="{DynamicResource SpeedTestPostConnect}"
+                            Click="TestActive_Click"
+                            Padding="20,8"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2"
+                           x:Name="StatusMsg" Text=""
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="11" Margin="0,16,0,0"/>
+            </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="2" Margin="0,16,0,0"
+                   Text="ℹ Note: Pre-connect tests spin up a temporary Xray instance on ports 10810/10811."
+                   Foreground="{StaticResource TextMutedBrush}" FontSize="11"/>
+    </Grid>
+</UserControl>

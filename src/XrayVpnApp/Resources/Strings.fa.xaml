@@ -1,0 +1,138 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- App -->
+    <sys:String x:Key="AppTitle">Xray VPN</sys:String>
+    <sys:String x:Key="AppSubtitle">کلاینت VPN مبتنی بر Xray برای ویندوز 11</sys:String>
+
+    <!-- Tabs -->
+    <sys:String x:Key="TabServers">سرورها</sys:String>
+    <sys:String x:Key="TabSubscriptions">سابسکریپشن</sys:String>
+    <sys:String x:Key="TabSpeedTest">تست سرعت</sys:String>
+    <sys:String x:Key="TabSettings">تنظیمات</sys:String>
+    <sys:String x:Key="TabLogs">لاگ‌ها</sys:String>
+    <sys:String x:Key="TabAbout">درباره</sys:String>
+
+    <!-- Connection -->
+    <sys:String x:Key="Connect">اتصال</sys:String>
+    <sys:String x:Key="Disconnect">قطع اتصال</sys:String>
+    <sys:String x:Key="Connecting">در حال اتصال...</sys:String>
+    <sys:String x:Key="Connected">متصل</sys:String>
+    <sys:String x:Key="Disconnected">قطع</sys:String>
+    <sys:String x:Key="Status">وضعیت</sys:String>
+    <sys:String x:Key="ConnectedServer">سرور متصل</sys:String>
+    <sys:String x:Key="UploadSpeed">سرعت آپلود</sys:String>
+    <sys:String x:Key="DownloadSpeed">سرعت دانلود</sys:String>
+    <sys:String x:Key="DataUsage">مصرف داده</sys:String>
+    <sys:String x:Key="Duration">مدت اتصال</sys:String>
+
+    <!-- Server list -->
+    <sys:String x:Key="AddServer">افزودن سرور</sys:String>
+    <sys:String x:Key="EditServer">ویرایش سرور</sys:String>
+    <sys:String x:Key="DeleteServer">حذف سرور</sys:String>
+    <sys:String x:Key="ImportFromClipboard">وارد کردن از کلیپ‌بورد</sys:String>
+    <sys:String x:Key="ImportFromFile">وارد کردن از فایل</sys:String>
+    <sys:String x:Key="ImportFromSubscription">وارد کردن از سابسکریپشن</sys:String>
+    <sys:String x:Key="PasteLinkHere">لینک کانفیگ را اینجا paste کنید</sys:String>
+    <sys:String x:Key="TestAll">تست همه</sys:String>
+    <sys:String x:Key="TestLatency">تست پینگ</sys:String>
+    <sys:String x:Key="TestSpeed">تست سرعت</sys:String>
+    <sys:String x:Key="QRCode">QR کد</sys:String>
+    <sys:String x:Key="ShareLink">لینک اشتراک</sys:String>
+    <sys:String x:Key="CopyLink">کپی لینک</sys:String>
+
+    <!-- Server columns -->
+    <sys:String x:Key="ColRemark">نام</sys:String>
+    <sys:String x:Key="ColAddress">آدرس</sys:String>
+    <sys:String x:Key="ColProtocol">پروتکل</sys:String>
+    <sys:String x:Key="ColLatency">پینگ</sys:String>
+    <sys:String x:Key="ColSpeed">سرعت</sys:String>
+    <sys:String x:Key="ColActions">عملیات</sys:String>
+
+    <!-- Subscriptions -->
+    <sys:String x:Key="AddSubscription">افزودن سابسکریپشن</sys:String>
+    <sys:String x:Key="UpdateSubscription">بروزرسانی</sys:String>
+    <sys:String x:Key="UpdateAll">بروزرسانی همه</sys:String>
+    <sys:String x:Key="SubscriptionUrl">آدرس سابسکریپشن</sys:String>
+    <sys:String x:Key="SubscriptionName">نام</sys:String>
+    <sys:String x:Key="AutoUpdate">بروزرسانی خودکار</sys:String>
+    <sys:String x:Key="LastUpdated">آخرین بروزرسانی</sys:String>
+
+    <!-- Settings -->
+    <sys:String x:Key="SettingsGeneral">عمومی</sys:String>
+    <sys:String x:Key="SettingsTun">تنظیمات TUN</sys:String>
+    <sys:String x:Key="SettingsDns">DNS</sys:String>
+    <sys:String x:Key="SettingsRouting">مسیریابی</sys:String>
+    <sys:String x:Key="SettingsXray">هسته Xray</sys:String>
+    <sys:String x:Key="SettingsUi">رابط کاربری</sys:String>
+
+    <sys:String x:Key="Language">زبان</sys:String>
+    <sys:String x:Key="StartWithWindows">شروع با ویندوز</sys:String>
+    <sys:String x:Key="MinimizeToTray">مینیمایز به System Tray</sys:String>
+    <sys:String x:Key="CloseToTray">بستن به System Tray</sys:String>
+    <sys:String x:Key="AutoConnectOnStart">اتصال خودکار در شروع</sys:String>
+
+    <sys:String x:Key="TunIp">آدرس IP адапتر</sys:String>
+    <sys:String x:Key="TunGateway">Gateway</sys:String>
+    <sys:String x:Key="TunMtu">MTU</sys:String>
+    <sys:String x:Key="TunAdapterName">نام اداپتور</sys:String>
+
+    <sys:String x:Key="LocalDns">DNS محلی</sys:String>
+    <sys:String x:Key="RemoteDns">DNS ریموت</sys:String>
+    <sys:String x:Key="EnableFakeDns">فعال‌سازی Fake DNS</sys:String>
+    <sys:String x:Key="DnsOverHttps">DNS over HTTPS</sys:String>
+    <sys:String x:Key="DohUrl">آدرس DoH</sys:String>
+
+    <sys:String x:Key="BypassLan">عبور از ترافیک LAN</sys:String>
+    <sys:String x:Key="BypassIran">عبور از سایت‌های ایرانی</sys:String>
+    <sys:String x:Key="BlockAds">مسدودسازی تبلیغات</sys:String>
+
+    <sys:String x:Key="XrayLogLevel">سطح لاگ</sys:String>
+    <sys:String x:Key="EnableMux">فعال‌سازی Mux</sys:String>
+    <sys:String x:Key="MuxConcurrency">تعداد کانکشن Mux</sys:String>
+
+    <sys:String x:Key="SocksPort">پورت SOCKS</sys:String>
+    <sys:String x:Key="HttpPort">پورت HTTP</sys:String>
+
+    <sys:String x:Key="Save">ذخیره</sys:String>
+    <sys:String x:Key="Cancel">انصراف</sys:String>
+    <sys:String x:Key="Apply">اعمال</sys:String>
+    <sys:String x:Key="OK">باشه</sys:String>
+
+    <!-- Speed test -->
+    <sys:String x:Key="SpeedTestPreConnect">تست قبل از اتصال</sys:String>
+    <sys:String x:Key="SpeedTestPostConnect">تست بعد از اتصال</sys:String>
+    <sys:String x:Key="TestDownload">تست دانلود</sys:String>
+    <sys:String x:Key="TestUpload">تست آپلود</sys:String>
+    <sys:String x:Key="DownloadSpeedResult">نتیجه دانلود</sys:String>
+
+    <!-- About -->
+    <sys:String x:Key="AboutTitle">درباره Xray VPN</sys:String>
+    <sys:String x:Key="Version">نسخه</sys:String>
+    <sys:String x:Key="XrayCoreVersion">نسخه هسته Xray</sys:String>
+    <sys:String x:Key="License">لایسنس</sys:String>
+    <sys:String x:Key="OpenSource">متن‌باز</sys:String>
+    <sys:String x:Key="GitHub">گیت‌هاب</sys:String>
+    <sys:String x:Key="CheckForUpdates">بررسی آپدیت</sys:String>
+
+    <!-- Messages -->
+    <sys:String x:Key="MsgEmptyClipboard">کلیپ‌بورد خالی است یا کانفیگ معتبر نیست</sys:String>
+    <sys:String x:Key="MsgNoServerSelected">هیچ سروری انتخاب نشده است</sys:String>
+    <sys:String x:Key="MsgConfigAdded">کانفیگ با موفقیت اضافه شد</sys:String>
+    <sys:String x:Key="MsgConfigAddFailed">خطا در افزودن کانفیگ</sys:String>
+    <sys:String x:Key="MsgDeleteConfirm">آیا از حذف این سرور مطمئن هستید؟</sys:String>
+    <sys:String x:Key="MsgConfirm">تأیید</sys:String>
+    <sys:String x:Key="MsgError">خطا</sys:String>
+    <sys:String x:Key="MsgNeedAdmin">برنامه باید با دسترسی ادمین اجرا شود</sys:String>
+    <sys:String x:Key="MsgSettingsSaved">تنظیمات ذخیره شد</sys:String>
+    <sys:String x:Key="MsgSubscriptionUpdated">سابسکریپشن بروزرسانی شد</sys:String>
+    <sys:String x:Key="MsgSubscriptionFailed">خطا در بروزرسانی سابسکریپشن</sys:String>
+
+    <!-- Tray -->
+    <sys:String x:Key="TrayShow">نمایش</sys:String>
+    <sys:String x:Key="TrayExit">خروج</sys:String>
+    <sys:String x:Key="TrayConnect">اتصال</sys:String>
+    <sys:String x:Key="TrayDisconnect">قطع اتصال</sys:String>
+
+</ResourceDictionary>

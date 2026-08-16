@@ -1,0 +1,112 @@
+# =====================================================
+# .gitignore for C# / .NET 8 / WPF / Xray VPN project
+# =====================================================
+
+## ---- Visual Studio / Rider / VS Code ----
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userprefs
+*.csproj.user
+*.sln.docstates
+*.rsuser
+
+## ---- Build output ----
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+build/
+artifacts/
+publish/
+*.dll.config
+*.pdb
+
+## ---- Test results ----
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+TestResult.xml
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+
+## ---- NuGet ----
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!**/packages/build/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## ---- Publish single-file output ----
+*.exe.bak
+*.dll.bak
+
+## ---- Runtime files ----
+*.log
+*.log.*
+log-*.txt
+appsettings.*.local.json
+*.local.json
+
+## ---- User-specific settings ----
+*.local.settings.json
+settings.local.json
+servers.local.json
+
+## ---- OS junk ----
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+*.swp
+*.swo
+*~
+
+## ---- Secrets / credentials ----
+*.pfx
+*.p12
+*.key
+*.pem
+.env
+.env.*
+secrets.json
+credentials.json
+
+## ---- External dependencies (downloaded by script) ----
+# Don't include xray.exe, wintun.dll, geoip.dat, geosite.dat in git
+# Users must run scripts/download-deps.ps1 to fetch them
+src/XrayVpnApp/Resources/xray.exe
+src/XrayVpnApp/Resources/wintun.dll
+src/XrayVpnApp/Resources/geoip.dat
+src/XrayVpnApp/Resources/geosite.dat
+
+## ---- App data (created at runtime) ----
+*.dat.bak
+config.json
+
+## ---- Bundles / Archives ----
+*.bundle
+*.zip
+*.tar.gz
+*.7z
+!src/XrayVpnApp.Installer/assets/*.zip
+
+## ---- Generated installer output ----
+installer-output/
+Output/
+
+## ---- Misc ----
+*.cache
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej

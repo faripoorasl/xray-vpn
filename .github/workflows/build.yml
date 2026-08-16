@@ -1,0 +1,59 @@
+# GitHub Actions CI workflow for Xray VPN
+# Builds the project on every push/PR to main
+
+name: Build
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    name: Build (Windows x64)
+    runs-on: windows-2022
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Cache NuGet
+      uses: actions/cache@v3
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore dependencies
+      run: dotnet restore XrayVpn.sln
+
+    - name: Build (Release x64)
+      run: dotnet build XrayVpn.sln -c Release -p:Platform=x64 --no-restore
+
+    - name: Publish single-file
+      run: |
+        dotnet publish src/XrayVpnApp/XrayVpnApp.csproj `
+          -c Release `
+          -r win-x64 `
+          -p:Platform=x64 `
+          --self-contained true `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -p:EnableCompressionInSingleFile=true `
+          -o build/Release/publish
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: XrayVpn-build-${{ github.sha }}
+        path: build/Release/publish/
+        retention-days: 14

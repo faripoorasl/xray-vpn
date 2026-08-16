@@ -1,0 +1,117 @@
+<UserControl x:Class="XrayVpnApp.Views.ServersPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:XrayVpnApp.ViewModels"
+             xmlns:conv="clr-namespace:XrayVpnApp.Converters"
+             Background="{StaticResource BackgroundBrush}">
+    <UserControl.Resources>
+        <conv:LatencyToColorConverter x:Key="LatencyToColor"/>
+    </UserControl.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar -->
+        <WrapPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <Button Content="{DynamicResource ImportFromClipboard}"
+                    Command="{Binding AddServerFromClipboardCommand}"
+                    Margin="0,0,8,8" Padding="12,8"/>
+            <Button Content="{DynamicResource ImportFromFile}"
+                    Click="ImportFile_Click"
+                    Margin="0,0,8,8" Padding="12,8"/>
+            <Button Content="{DynamicResource TestAll}"
+                    Command="{Binding TestAllLatencyCommand}"
+                    Margin="0,0,8,8" Padding="12,8"/>
+        </WrapPanel>
+
+        <!-- Quick paste box -->
+        <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}"
+                CornerRadius="4" Padding="8" Margin="0,0,0,12"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+            <StackPanel>
+                <TextBlock Text="{DynamicResource PasteLinkHere}"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="11" Margin="0,0,0,4"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="PasteBox" Grid.Column="0"
+                             KeyDown="PasteBox_OnKeyDown"
+                             MinHeight="32" AcceptsReturn="True"
+                             TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                    <Button Grid.Column="1" Content="+"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Click="AddFromPasteBox_Click"
+                            Margin="8,0,0,0" Width="40"/>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Server list -->
+        <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}"
+                CornerRadius="4" ClipToBounds="True">
+            <DataGrid ItemsSource="{Binding Servers}"
+                      SelectedItem="{Binding SelectedServer}"
+                      AutoGenerateColumns="False"
+                      HeadersVisibility="Column"
+                      CanUserSortColumns="True"
+                      GridLinesVisibility="Horizontal">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="{DynamicResource ColRemark}"
+                                        Binding="{Binding Remark}"
+                                        Width="200"/>
+                    <DataGridTextColumn Header="{DynamicResource ColAddress}"
+                                        Binding="{Binding DisplayAddress}"
+                                        Width="220"/>
+                    <DataGridTextColumn Header="{DynamicResource ColProtocol}"
+                                        Binding="{Binding Protocol}"
+                                        Width="100"/>
+                    <DataGridTextColumn Header="{DynamicResource ColLatency}"
+                                        Binding="{Binding DisplayLatency}"
+                                        Width="100"
+                                        SortMemberPath="LatencyMs">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{Binding LatencyMs, Converter={StaticResource LatencyToColor}}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="{DynamicResource ColSpeed}"
+                                        Binding="{Binding DisplaySpeed}"
+                                        Width="120"/>
+                    <DataGridTemplateColumn Header="{DynamicResource ColActions}" Width="280">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="🛰" ToolTip="{DynamicResource TestLatency}"
+                                            Command="{Binding DataContext.TestLatencyCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            CommandParameter="{Binding}"
+                                            Padding="6,4" Margin="0,0,4,0"/>
+                                    <Button Content="⚡" ToolTip="{DynamicResource TestSpeed}"
+                                            Command="{Binding DataContext.TestSpeedCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            CommandParameter="{Binding}"
+                                            Padding="6,4" Margin="0,0,4,0"/>
+                                    <Button Content="📋" ToolTip="{DynamicResource CopyLink}"
+                                            Command="{Binding DataContext.CopyServerLinkCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            CommandParameter="{Binding}"
+                                            Padding="6,4" Margin="0,0,4,0"/>
+                                    <Button Content="🗑" ToolTip="{DynamicResource DeleteServer}"
+                                            Command="{Binding DataContext.DeleteServerCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            CommandParameter="{Binding}"
+                                            Padding="6,4"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+    </Grid>
+</UserControl>

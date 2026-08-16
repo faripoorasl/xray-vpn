@@ -1,0 +1,91 @@
+<UserControl x:Class="XrayVpnApp.Views.SubscriptionsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource BackgroundBrush}">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Add new subscription -->
+        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}"
+                CornerRadius="4" Padding="12" Margin="0,0,0,12"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="150"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="100"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource SubscriptionName}"
+                           VerticalAlignment="Center" Margin="0,0,8,8"/>
+                <TextBox Grid.Row="0" Grid.Column="1" x:Name="SubNameBox"
+                         Margin="0,0,0,8"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource SubscriptionUrl}"
+                           VerticalAlignment="Center" Margin="0,0,8,8"/>
+                <TextBox Grid.Row="1" Grid.Column="1" x:Name="SubUrlBox"
+                         Margin="0,0,0,8"/>
+
+                <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal">
+                    <CheckBox x:Name="AutoUpdateBox" Content="{DynamicResource AutoUpdate}"
+                              VerticalAlignment="Center" Margin="0,0,16,0"/>
+                    <TextBlock Text="Update every (h):" VerticalAlignment="Center" Margin="0,0,8,0"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <TextBox x:Name="IntervalBox" Width="50" Text="24"/>
+                </StackPanel>
+
+                <Button Grid.Row="0" Grid.RowSpan="3" Grid.Column="2"
+                        Content="{DynamicResource AddSubscription}"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Click="AddSubscription_Click"
+                        VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+            <Button Content="{DynamicResource UpdateAll}" Click="UpdateAll_Click"
+                    Padding="12,8" Margin="0,0,8,0"/>
+        </WrapPanel>
+
+        <!-- Subscriptions list -->
+        <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" CornerRadius="4">
+            <DataGrid x:Name="SubsGrid"
+                      AutoGenerateColumns="False"
+                      HeadersVisibility="Column"
+                      CanUserSortColumns="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="{DynamicResource SubscriptionName}"
+                                        Binding="{Binding Name}" Width="180"/>
+                    <DataGridTextColumn Header="{DynamicResource SubscriptionUrl}"
+                                        Binding="{Binding Url}" Width="*"/>
+                    <DataGridTextColumn Header="{DynamicResource LastUpdated}"
+                                        Binding="{Binding LastUpdated, StringFormat=yyyy-MM-dd HH:mm}"
+                                        Width="160"/>
+                    <DataGridTextColumn Header="Servers" Binding="{Binding ServerCount}" Width="80"/>
+                    <DataGridTemplateColumn Header="Actions" Width="200">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="↻" ToolTip="{DynamicResource UpdateSubscription}"
+                                            Tag="{Binding Id}"
+                                            Click="UpdateSub_Click" Padding="6,4" Margin="0,0,4,0"/>
+                                    <Button Content="🗑" Tag="{Binding Id}"
+                                            Click="DeleteSub_Click" Padding="6,4"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,97 @@
+<UserControl x:Class="XrayVpnApp.Views.AboutPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource BackgroundBrush}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="32">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Logo & title -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,24">
+                <TextBlock Text="🛡" FontSize="64" VerticalAlignment="Center" Margin="0,0,24,0"/>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Xray VPN" FontSize="32" FontWeight="Bold"/>
+                    <TextBlock Text="for Windows 11" FontSize="14"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Info grid -->
+            <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}"
+                    CornerRadius="4" Padding="20" Margin="0,0,0,24"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource Version}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" x:Name="VersionLabel" Text="1.0.0" Margin="0,0,0,12"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource XrayCoreVersion}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="XrayVersionLabel" Text="—" Margin="0,0,0,12"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{DynamicResource License}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="MIT (free for personal & commercial use)" Margin="0,0,0,12"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{DynamicResource OpenSource}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
+                        <TextBlock Text="✓"/>
+                        <TextBlock Text=" — " Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock Text="{DynamicResource GitHub}" Foreground="{StaticResource PrimaryBrush}" Cursor="Hand"
+                                   MouseLeftButtonUp="GitHub_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Description -->
+            <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}"
+                    CornerRadius="4" Padding="20" Margin="0,0,0,24"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Text="Description / توضیحات" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                    <TextBlock TextWrapping="Wrap" LineHeight="22">
+                        A native Windows 11 VPN client built on the Xray-core engine.
+                        Creates a wintun-based TUN adapter to route all system traffic through
+                        V2Ray / VLESS / VMess / Trojan / Shadowsocks protocols. Supports
+                        subscription URLs, DNS-over-HTTPS, Fake DNS, and Iranian site bypass.
+                        <LineBreak/>
+                        <LineBreak/>
+                        یک کلاینت VPN نتیو برای ویندوز 11 ساخته‌شده بر پایه موتور Xray-core.
+                        اداپتور TUN مبتنی بر wintun برای مسیریابی کل ترافیک سیستم از طریق
+                        پروتکل‌های V2Ray / VLESS / VMess / Trojan / Shadowsocks.
+                        پشتیبانی از سابسکریپشن، DNS-over-HTTPS، Fake DNS و عبور از سایت‌های ایرانی.
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <!-- Credits -->
+            <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}"
+                    CornerRadius="4" Padding="20"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Text="Credits / اعتبارات" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                    <TextBlock TextWrapping="Wrap" LineHeight="20">
+                        • Xray-core — https://github.com/XTLS/Xray-core<LineBreak/>
+                        • wintun — https://www.wintun.net (WireGuard project)<LineBreak/>
+                        • .NET 8 + WPF — Microsoft<LineBreak/>
+                        • CommunityToolkit.Mvvm — Microsoft<LineBreak/>
+                        • QRSharp — for QR code generation
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

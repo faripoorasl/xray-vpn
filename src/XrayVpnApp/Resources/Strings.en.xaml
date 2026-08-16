@@ -1,0 +1,138 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- App -->
+    <sys:String x:Key="AppTitle">Xray VPN</sys:String>
+    <sys:String x:Key="AppSubtitle">Xray-based VPN client for Windows 11</sys:String>
+
+    <!-- Tabs -->
+    <sys:String x:Key="TabServers">Servers</sys:String>
+    <sys:String x:Key="TabSubscriptions">Subscriptions</sys:String>
+    <sys:String x:Key="TabSpeedTest">Speed Test</sys:String>
+    <sys:String x:Key="TabSettings">Settings</sys:String>
+    <sys:String x:Key="TabLogs">Logs</sys:String>
+    <sys:String x:Key="TabAbout">About</sys:String>
+
+    <!-- Connection -->
+    <sys:String x:Key="Connect">Connect</sys:String>
+    <sys:String x:Key="Disconnect">Disconnect</sys:String>
+    <sys:String x:Key="Connecting">Connecting...</sys:String>
+    <sys:String x:Key="Connected">Connected</sys:String>
+    <sys:String x:Key="Disconnected">Disconnected</sys:String>
+    <sys:String x:Key="Status">Status</sys:String>
+    <sys:String x:Key="ConnectedServer">Connected Server</sys:String>
+    <sys:String x:Key="UploadSpeed">Upload Speed</sys:String>
+    <sys:String x:Key="DownloadSpeed">Download Speed</sys:String>
+    <sys:String x:Key="DataUsage">Data Usage</sys:String>
+    <sys:String x:Key="Duration">Duration</sys:String>
+
+    <!-- Server list -->
+    <sys:String x:Key="AddServer">Add Server</sys:String>
+    <sys:String x:Key="EditServer">Edit Server</sys:String>
+    <sys:String x:Key="DeleteServer">Delete Server</sys:String>
+    <sys:String x:Key="ImportFromClipboard">Import from Clipboard</sys:String>
+    <sys:String x:Key="ImportFromFile">Import from File</sys:String>
+    <sys:String x:Key="ImportFromSubscription">Import from Subscription</sys:String>
+    <sys:String x:Key="PasteLinkHere">Paste config link here</sys:String>
+    <sys:String x:Key="TestAll">Test All</sys:String>
+    <sys:String x:Key="TestLatency">Test Latency</sys:String>
+    <sys:String x:Key="TestSpeed">Test Speed</sys:String>
+    <sys:String x:Key="QRCode">QR Code</sys:String>
+    <sys:String x:Key="ShareLink">Share Link</sys:String>
+    <sys:String x:Key="CopyLink">Copy Link</sys:String>
+
+    <!-- Server columns -->
+    <sys:String x:Key="ColRemark">Name</sys:String>
+    <sys:String x:Key="ColAddress">Address</sys:String>
+    <sys:String x:Key="ColProtocol">Protocol</sys:String>
+    <sys:String x:Key="ColLatency">Latency</sys:String>
+    <sys:String x:Key="ColSpeed">Speed</sys:String>
+    <sys:String x:Key="ColActions">Actions</sys:String>
+
+    <!-- Subscriptions -->
+    <sys:String x:Key="AddSubscription">Add Subscription</sys:String>
+    <sys:String x:Key="UpdateSubscription">Update</sys:String>
+    <sys:String x:Key="UpdateAll">Update All</sys:String>
+    <sys:String x:Key="SubscriptionUrl">Subscription URL</sys:String>
+    <sys:String x:Key="SubscriptionName">Name</sys:String>
+    <sys:String x:Key="AutoUpdate">Auto Update</sys:String>
+    <sys:String x:Key="LastUpdated">Last Updated</sys:String>
+
+    <!-- Settings -->
+    <sys:String x:Key="SettingsGeneral">General</sys:String>
+    <sys:String x:Key="SettingsTun">TUN Settings</sys:String>
+    <sys:String x:Key="SettingsDns">DNS</sys:String>
+    <sys:String x:Key="SettingsRouting">Routing</sys:String>
+    <sys:String x:Key="SettingsXray">Xray Core</sys:String>
+    <sys:String x:Key="SettingsUi">User Interface</sys:String>
+
+    <sys:String x:Key="Language">Language</sys:String>
+    <sys:String x:Key="StartWithWindows">Start with Windows</sys:String>
+    <sys:String x:Key="MinimizeToTray">Minimize to Tray</sys:String>
+    <sys:String x:Key="CloseToTray">Close to Tray</sys:String>
+    <sys:String x:Key="AutoConnectOnStart">Auto-connect on Start</sys:String>
+
+    <sys:String x:Key="TunIp">Adapter IP Address</sys:String>
+    <sys:String x:Key="TunGateway">Gateway</sys:String>
+    <sys:String x:Key="TunMtu">MTU</sys:String>
+    <sys:String x:Key="TunAdapterName">Adapter Name</sys:String>
+
+    <sys:String x:Key="LocalDns">Local DNS</sys:String>
+    <sys:String x:Key="RemoteDns">Remote DNS</sys:String>
+    <sys:String x:Key="EnableFakeDns">Enable Fake DNS</sys:String>
+    <sys:String x:Key="DnsOverHttps">DNS over HTTPS</sys:String>
+    <sys:String x:Key="DohUrl">DoH URL</sys:String>
+
+    <sys:String x:Key="BypassLan">Bypass LAN Traffic</sys:String>
+    <sys:String x:Key="BypassIran">Bypass Iranian Sites</sys:String>
+    <sys:String x:Key="BlockAds">Block Ads</sys:String>
+
+    <sys:String x:Key="XrayLogLevel">Log Level</sys:String>
+    <sys:String x:Key="EnableMux">Enable Mux</sys:String>
+    <sys:String x:Key="MuxConcurrency">Mux Concurrency</sys:String>
+
+    <sys:String x:Key="SocksPort">SOCKS Port</sys:String>
+    <sys:String x:Key="HttpPort">HTTP Port</sys:String>
+
+    <sys:String x:Key="Save">Save</sys:String>
+    <sys:String x:Key="Cancel">Cancel</sys:String>
+    <sys:String x:Key="Apply">Apply</sys:String>
+    <sys:String x:Key="OK">OK</sys:String>
+
+    <!-- Speed test -->
+    <sys:String x:Key="SpeedTestPreConnect">Pre-Connect Test</sys:String>
+    <sys:String x:Key="SpeedTestPostConnect">Post-Connect Test</sys:String>
+    <sys:String x:Key="TestDownload">Test Download</sys:String>
+    <sys:String x:Key="TestUpload">Test Upload</sys:String>
+    <sys:String x:Key="DownloadSpeedResult">Download Result</sys:String>
+
+    <!-- About -->
+    <sys:String x:Key="AboutTitle">About Xray VPN</sys:String>
+    <sys:String x:Key="Version">Version</sys:String>
+    <sys:String x:Key="XrayCoreVersion">Xray Core Version</sys:String>
+    <sys:String x:Key="License">License</sys:String>
+    <sys:String x:Key="OpenSource">Open Source</sys:String>
+    <sys:String x:Key="GitHub">GitHub</sys:String>
+    <sys:String x:Key="CheckForUpdates">Check for Updates</sys:String>
+
+    <!-- Messages -->
+    <sys:String x:Key="MsgEmptyClipboard">Clipboard is empty or no valid config found</sys:String>
+    <sys:String x:Key="MsgNoServerSelected">No server selected</sys:String>
+    <sys:String x:Key="MsgConfigAdded">Config added successfully</sys:String>
+    <sys:String x:Key="MsgConfigAddFailed">Failed to add config</sys:String>
+    <sys:String x:Key="MsgDeleteConfirm">Are you sure you want to delete this server?</sys:String>
+    <sys:String x:Key="MsgConfirm">Confirm</sys:String>
+    <sys:String x:Key="MsgError">Error</sys:String>
+    <sys:String x:Key="MsgNeedAdmin">Application needs to run as Administrator</sys:String>
+    <sys:String x:Key="MsgSettingsSaved">Settings saved</sys:String>
+    <sys:String x:Key="MsgSubscriptionUpdated">Subscription updated</sys:String>
+    <sys:String x:Key="MsgSubscriptionFailed">Failed to update subscription</sys:String>
+
+    <!-- Tray -->
+    <sys:String x:Key="TrayShow">Show</sys:String>
+    <sys:String x:Key="TrayExit">Exit</sys:String>
+    <sys:String x:Key="TrayConnect">Connect</sys:String>
+    <sys:String x:Key="TrayDisconnect">Disconnect</sys:String>
+
+</ResourceDictionary>
