@@ -76,34 +76,36 @@ public partial class MainViewModel : ObservableObject
         }
 
         IsConnecting = true;
-        StatusText = App.Language.Current == "fa" ? "در حال اتصال..." : "Connecting...";
+        StatusText = App.Language.Current == "fa" ? "Ø¯Ø± Ø­Ø§Ù Ø§ØªØµØ§Ù..." : "Connecting...";
 
         try
         {
-            // 1. Start Xray
-            if (!App.XrayCore.Start(SelectedServer, App.Settings.Current, tunMode: 1))
+            // 1. Start TUN adapter FIRST (so the 10.10.0.2 IP exists for Xray to bind to)
+            if (!App.TunAdapter.Start(App.Settings.Current))
             {
                 MessageBox.Show(App.Language.Current == "fa"
-                    ? "خطا در راه‌اندازی هسته Xray"
+                    ? "Ø®Ø·Ø§ Ø¯Ø± Ø§ÛØ¬Ø§Ø¯ Ø§Ø¯Ø§Ù¾ØªÙØ± TUN. ÙØ·ÙØ¦Ù Ø´ÙÛØ¯ Ø¨Ø±ÙØ§ÙÙ Ø¨Ù ØµÙØ±Øª Ø§Ø¯ÙÛÙ Ø§Ø¬Ø±Ø§ Ø´Ø¯Ù Ø§Ø³Øª."
+                    : "Failed to create TUN adapter. Make sure the app is running as Administrator.");
+                IsConnecting = false;
+                ResetStatus();
+                return false;
+            }
+
+            await Task.Delay(500);
+
+            // 2. Start Xray (now it can bind to 10.10.0.2:1080)
+            if (!App.XrayCore.Start(SelectedServer, App.Settings.Current, tunMode: 1))
+            {
+                App.TunAdapter.Stop();
+                MessageBox.Show(App.Language.Current == "fa"
+                    ? "Ø®Ø·Ø§ Ø¯Ø± Ø±Ø§ÙâØ§ÙØ¯Ø§Ø²Û ÙØ³ØªÙ Xray"
                     : "Failed to start Xray core");
                 IsConnecting = false;
                 ResetStatus();
                 return false;
             }
 
-            await Task.Delay(800);
-
-            // 2. Start TUN adapter
-            if (!App.TunAdapter.Start(App.Settings.Current))
-            {
-                App.XrayCore.Stop();
-                MessageBox.Show(App.Language.Current == "fa"
-                    ? "خطا در ایجاد اداپتور TUN. مطمئن شوید برنامه به صورت ادمین اجرا شده است."
-                    : "Failed to create TUN adapter. Make sure the app is running as Administrator.");
-                IsConnecting = false;
-                ResetStatus();
-                return false;
-            }
+            await Task.Delay(500);
 
             // 3. Set DNS
             App.Dns.SetSystemDns(App.Settings.Current.RemoteDns, App.Settings.Current.LocalDns);
@@ -141,8 +143,9 @@ public partial class MainViewModel : ObservableObject
         {
             try
             {
-                App.TunAdapter.Stop();
+                // Stop Xray FIRST, then TUN (reverse of connect order)
                 App.XrayCore.Stop();
+                App.TunAdapter.Stop();
                 App.Dns.ResetSystemDns();
             }
             catch (Exception ex)
