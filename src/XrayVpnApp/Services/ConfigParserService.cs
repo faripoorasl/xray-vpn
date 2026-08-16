@@ -148,18 +148,18 @@ public class ConfigParserService
             Address = uri.Host,
             Port = uri.Port,
             Uuid = uri.UserInfo,
-            Encryption = query.Get("encryption") ?? "none",
-            Network = query.Get("type") ?? "tcp",
-            Security = query.Get("security") ?? "tls",
-            Host = query.Get("host") ?? "",
-            Path = query.Get("path") ?? "",
-            Sni = query.Get("sni") ?? query.Get("peer") ?? "",
-            Flow = query.Get("flow") ?? "",
-            Fingerprint = query.Get("fp") ?? "chrome",
-            PublicKey = query.Get("pbk") ?? "",
-            ShortId = query.Get("sid") ?? "",
-            SpiderX = query.Get("spx") ?? "",
-            ServerName = query.Get("sni") ?? "",
+            Encryption = query.DictGet("encryption") ?? "none",
+            Network = query.DictGet("type") ?? "tcp",
+            Security = query.DictGet("security") ?? "tls",
+            Host = query.DictGet("host") ?? "",
+            Path = query.DictGet("path") ?? "",
+            Sni = query.DictGet("sni") ?? query.DictGet("peer") ?? "",
+            Flow = query.DictGet("flow") ?? "",
+            Fingerprint = query.DictGet("fp") ?? "chrome",
+            PublicKey = query.DictGet("pbk") ?? "",
+            ShortId = query.DictGet("sid") ?? "",
+            SpiderX = query.DictGet("spx") ?? "",
+            ServerName = query.DictGet("sni") ?? "",
         };
 
         server.TlsEnabled = server.Security == "tls";
@@ -193,14 +193,14 @@ public class ConfigParserService
             Address = uri.Host,
             Port = uri.Port,
             Uuid = Uri.UnescapeDataString(uri.UserInfo), // password
-            Network = query.Get("type") ?? "tcp",
+            Network = query.DictGet("type") ?? "tcp",
             Security = "tls",
-            Host = query.Get("host") ?? "",
-            Path = query.Get("path") ?? "",
-            Sni = query.Get("sni") ?? query.Get("peer") ?? "",
-            Flow = query.Get("flow") ?? "",
-            Fingerprint = query.Get("fp") ?? "chrome",
-            AllowInsecure = (query.Get("allowInsecure") ?? "0") == "1",
+            Host = query.DictGet("host") ?? "",
+            Path = query.DictGet("path") ?? "",
+            Sni = query.DictGet("sni") ?? query.DictGet("peer") ?? "",
+            Flow = query.DictGet("flow") ?? "",
+            Fingerprint = query.DictGet("fp") ?? "chrome",
+            AllowInsecure = (query.DictGet("allowInsecure") ?? "0") == "1",
             TlsEnabled = true,
         };
 
@@ -456,7 +456,7 @@ public class ConfigParserService
     /// <summary>
     /// Safe indexer — returns null if key not found (compatible with NameValueCollection usage).
     /// </summary>
-    private static string? Get(this Dictionary<string, string> dict, string key) =>
+    private static string? DictGet(this Dictionary<string, string> dict, string key) =>
         dict.TryGetValue(key, out var val) ? val : null;
 
     #endregion
