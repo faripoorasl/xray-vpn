@@ -264,6 +264,60 @@ if ($dn) {
 }
 
 # ============================================================
+# Check 8: Bundled dependencies (xray.exe, wintun.dll, etc.)
+# ============================================================
+Write-Host ""
+Write-Host ">>> Check 8: Bundled dependencies..." -ForegroundColor Cyan
+$resourcesDir = Join-Path $RepoDir 'src\XrayVpnApp\Resources'
+$bundledFiles = @(
+    @{Name='xray.exe'; MinSize=10MB},
+    @{Name='wintun.dll'; MinSize=100KB},
+    @{Name='geoip.dat'; MinSize=1MB},
+    @{Name='geosite.dat'; MinSize=1MB}
+)
+$missingBundled = @()
+foreach ($f in $bundledFiles) {
+    $p = Join-Path $resourcesDir $f.Name
+    if (Test-Path $p) {
+        $size = (Get-Item $p).Length
+        if ($size -ge $f.MinSize) {
+            Write-Host ("  [OK] {0,-15} {1,10:N0} bytes" -f $f.Name, $size) -ForegroundColor Green
+        } else {
+            Write-Host ("  [FAIL] {0,-15} too small ({1:N0} bytes)" -f $f.Name, $size) -ForegroundColor Red
+            $missingBundled += $f.Name
+        }
+    } else {
+        Write-Host "  [FAIL] $($f.Name) missing" -ForegroundColor Red
+        $missingBundled += $f.Name
+    }
+}
+if ($missingBundled.Count -gt 0) {
+    $issues += "Bundled deps missing: $($missingBundled -join ', ')"
+}
+
+# ============================================================
+# Check 9: Bundled NuGet packages
+# ============================================================
+Write-Host ""
+Write-Host ">>> Check 9: Bundled NuGet packages..." -ForegroundColor Cyan
+$localPkgsDir = Join-Path $RepoDir 'local-packages'
+if (Test-Path $localPkgsDir) {
+    $nupkgs = Get-ChildItem -Path $localPkgsDir -Filter '*.nupkg' -ErrorAction SilentlyContinue
+    if ($nupkgs.Count -gt 0) {
+        Write-Host "  [OK] Found $($nupkgs.Count) .nupkg files:" -ForegroundColor Green
+        foreach ($p in $nupkgs) {
+            Write-Host ("        {0,-50} {1,8:N0} bytes" -f $p.Name, $p.Length) -ForegroundColor Gray
+        }
+    } else {
+        Write-Host "  [WARN] local-packages folder is empty" -ForegroundColor Yellow
+        Write-Host "         Online NuGet restore will be used (needs internet)" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  [WARN] local-packages folder not found" -ForegroundColor Yellow
+    Write-Host "         Online NuGet restore will be used (needs internet)" -ForegroundColor Yellow
+}
+
+# ============================================================
 # Summary
 # ============================================================
 Write-Host ""

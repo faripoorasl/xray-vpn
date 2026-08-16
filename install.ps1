@@ -287,38 +287,36 @@ if (-not (Test-Path $slnPath)) {
 Write-OK "Source code ready at: $RepoDir"
 
 # ============================================================
-# Step 6: Download dependencies
+# Step 6: Verify dependencies (now bundled - no download needed!)
 # ============================================================
-Write-Step 'Step 6/9 - Downloading dependencies...'
+Write-Step 'Step 6/9 - Verifying bundled dependencies...'
 
 $resourcesDir = Join-Path $RepoDir 'src\XrayVpnApp\Resources'
 $expected = @('xray.exe', 'wintun.dll', 'geoip.dat', 'geosite.dat')
-$needDownload = $false
+
+# Check if bundled dependencies exist (offline install)
+$allBundled = $true
 foreach ($f in $expected) {
     if (-not (Test-Path (Join-Path $resourcesDir $f))) {
-        $needDownload = $true
+        $allBundled = $false
         break
     }
 }
 
-if ($needDownload) {
-    $dlScript = Join-Path $RepoDir 'scripts\download-deps.ps1'
-    if (-not (Test-Path $dlScript)) {
-        Die "download-deps.ps1 not found at: $dlScript" `
-            'The repository is incomplete. Delete the folder and re-run setup.bat.'
-    }
-
-    Write-Log 'Running download-deps.ps1...'
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $dlScript 2>&1 | ForEach-Object {
-        Write-Host "    $_"
-        Write-Log "  download-deps: $_"
-    }
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warn2 "download-deps.ps1 exited with code $LASTEXITCODE"
-    }
+if ($allBundled) {
+    Write-OK 'All dependencies are bundled (no internet needed)'
 } else {
-    Write-OK 'All dependencies already present'
+    # Fallback: try to download missing files
+    Write-Warn2 'Some bundled dependencies are missing. Trying to download...'
+    $dlScript = Join-Path $RepoDir 'scripts\download-deps.ps1'
+    if (Test-Path $dlScript) {
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $dlScript 2>&1 | ForEach-Object {
+            Write-Host "    $_"
+            Write-Log "  download-deps: $_"
+        }
+    } else {
+        Write-Warn2 'download-deps.ps1 not found. Will verify each file individually.'
+    }
 }
 
 # Verify each file
@@ -331,6 +329,8 @@ foreach ($f in $expected) {
         if ($size -lt 100KB) {
             Write-Warn2 "$f is suspiciously small ({0:N0} bytes)" -f $size
             $missing += $f
+        } else {
+            Write-Host ("    [OK] {0,-15} {1,10:N0} bytes" -f $f, $size) -ForegroundColor Green
         }
     } else {
         Write-Err2 "Missing: $f"
@@ -340,7 +340,7 @@ foreach ($f in $expected) {
 
 if ($missing.Count -gt 0) {
     Die "Required dependencies are missing: $($missing -join ', ')" `
-        "This usually means GitHub is blocked or your internet is unstable.`nSolutions:`n  1. Connect to a VPN and re-run setup.bat`n  2. Or download manually:`n     - xray.exe, geoip.dat, geosite.dat from: https://github.com/XTLS/Xray-core/releases/latest`n     - wintun.dll from: https://www.wintun.net/builds/wintun-0.14.1.zip`n  3. Place these files in: $resourcesDir`n  4. Re-run setup.bat"
+        "This release should have bundled these files.`nSolutions:`n  1. Re-download the latest release ZIP from:`n     https://github.com/faripoorasl/xray-vpn/releases/latest`n  2. Or download manually:`n     - xray.exe, geoip.dat, geosite.dat from: https://github.com/XTLS/Xray-core/releases/latest`n     - wintun.dll from: https://www.wintun.net/builds/wintun-0.14.1.zip`n  3. Place these files in: $resourcesDir`n  4. Re-run setup.bat"
 }
 
 Write-OK 'All dependencies present'
@@ -350,67 +350,99 @@ Write-OK 'All dependencies present'
 # ============================================================
 Write-Step 'Step 7/9 - Restoring NuGet packages...'
 
-# Force TLS 1.2 for older .NET Framework compatibility
+# Force TLS 1.2 for older .NET Framework compatibility (only needed for fallback)
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 } catch {}
 
 Push-Location $RepoDir
 try {
-    # First, check current NuGet sources
-    Write-Log 'Checking NuGet sources...'
-    $sources = & dotnet nuget list source 2>&1
-    $sources | ForEach-Object { Write-Log "  source: $_" }
+    # Primary: try offline restore using bundled local-packages folder
+    $localPkgsDir = Join-Path $RepoDir 'local-packages'
+    $hasLocalPkgs = Test-Path $localPkgsDir
 
-    # If no sources, add nuget.org
-    $hasNugetOrg = $sources | Where-Object { $_ -match 'nuget.org' -or $_ -match 'api.nuget.org' }
-    if (-not $hasNugetOrg) {
-        Write-Log 'No NuGet source configured. Adding nuget.org...'
-        & dotnet nuget add source 'https://api.nuget.org/v3/index.json' -n 'nuget.org' 2>&1 | ForEach-Object { Write-Log "  add source: $_" }
+    if ($hasLocalPkgs) {
+        $nupkgCount = (Get-ChildItem -Path $localPkgsDir -Filter '*.nupkg' -ErrorAction SilentlyContinue | Measure-Object).Count
+        Write-Log "Found $nupkgCount bundled NuGet packages in: $localPkgsDir"
+
+        if ($nupkgCount -gt 0) {
+            Write-Log 'Attempt 1: dotnet restore using LOCAL packages (offline)...'
+            $restoreOut = & dotnet restore XrayVpn.sln --verbosity minimal --source $localPkgsDir --source 'https://api.nuget.org/v3/index.json' 2>&1
+            $restoreOut | ForEach-Object { Write-Log "  restore: $_" }
+
+            if ($LASTEXITCODE -eq 0) {
+                Write-OK 'Packages restored from local-packages (no internet needed)'
+                $script:restoreSuccess = $true
+            } else {
+                Write-Warn2 'Local restore failed, falling back to online sources...'
+                $script:restoreSuccess = $false
+            }
+        } else {
+            Write-Warn2 'local-packages folder is empty. Falling back to online restore.'
+            $script:restoreSuccess = $false
+        }
+    } else {
+        Write-Warn2 'local-packages folder not found. Falling back to online restore.'
+        $script:restoreSuccess = $false
     }
 
-    # Attempt 1: restore with default sources
-    Write-Log 'Attempt 1: dotnet restore with default sources...'
-    $restoreOut = & dotnet restore XrayVpn.sln --verbosity minimal 2>&1
-    $restoreOut | ForEach-Object { Write-Log "  restore: $_" }
+    # Fallback: online restore with mirror sources
+    if (-not $script:restoreSuccess) {
+        # Check current NuGet sources
+        Write-Log 'Checking NuGet sources...'
+        $sources = & dotnet nuget list source 2>&1
+        $sources | ForEach-Object { Write-Log "  source: $_" }
 
-    $restoreSuccess = $LASTEXITCODE -eq 0
+        # If no sources, add nuget.org
+        $hasNugetOrg = $sources | Where-Object { $_ -match 'nuget.org' -or $_ -match 'api.nuget.org' }
+        if (-not $hasNugetOrg) {
+            Write-Log 'No NuGet source configured. Adding nuget.org...'
+            & dotnet nuget add source 'https://api.nuget.org/v3/index.json' -n 'nuget.org' 2>&1 | ForEach-Object { Write-Log "  add source: $_" }
+        }
 
-    # Check for NU1100/NU1101/NU1102 errors (package resolution failures)
-    if (-not $restoreSuccess) {
-        $nuErrors = $restoreOut | Where-Object { $_ -match 'NU1100|NU1101|NU1102' }
-        if ($nuErrors) {
-            Write-Warn2 'Default NuGet source failed (likely blocked/sanctions issue).'
+        # Attempt 2: restore with default sources
+        Write-Log 'Attempt 2: dotnet restore with online sources...'
+        $restoreOut2 = & dotnet restore XrayVpn.sln --verbosity minimal 2>&1
+        $restoreOut2 | ForEach-Object { Write-Log "  restore2: $_" }
 
-            # Attempt 2: Try Azure China mirror
-            $mirror1 = 'https://nuget.cdn.azure.cn/v3/index.json'
-            Write-Log "Attempt 2: Trying Azure China mirror..."
-            & dotnet nuget add source $mirror1 -n 'azure-cn' 2>&1 | Out-Null
-            $restoreOut2 = & dotnet restore XrayVpn.sln --verbosity minimal --source $mirror1 2>&1
-            $restoreOut2 | ForEach-Object { Write-Log "  restore2: $_" }
-            if ($LASTEXITCODE -eq 0) {
-                $restoreSuccess = $true
-                Write-OK 'Packages restored via Azure China mirror'
-            } else {
-                & dotnet nuget remove source 'azure-cn' 2>&1 | Out-Null
+        $script:restoreSuccess = $LASTEXITCODE -eq 0
 
-                # Attempt 3: Try MyGet
-                $mirror2 = 'https://www.myget.org/F/nuget/api/v3/index.json'
-                Write-Log "Attempt 3: Trying MyGet mirror..."
-                & dotnet nuget add source $mirror2 -n 'myget' 2>&1 | Out-Null
-                $restoreOut3 = & dotnet restore XrayVpn.sln --verbosity minimal --source $mirror2 2>&1
+        # Check for NU1100/NU1101/NU1102 errors (package resolution failures)
+        if (-not $script:restoreSuccess) {
+            $nuErrors = $restoreOut2 | Where-Object { $_ -match 'NU1100|NU1101|NU1102' }
+            if ($nuErrors) {
+                Write-Warn2 'Online NuGet source failed (likely blocked/sanctions issue).'
+
+                # Attempt 3: Try Azure China mirror
+                $mirror1 = 'https://nuget.cdn.azure.cn/v3/index.json'
+                Write-Log "Attempt 3: Trying Azure China mirror..."
+                & dotnet nuget add source $mirror1 -n 'azure-cn' 2>&1 | Out-Null
+                $restoreOut3 = & dotnet restore XrayVpn.sln --verbosity minimal --source $mirror1 2>&1
                 $restoreOut3 | ForEach-Object { Write-Log "  restore3: $_" }
                 if ($LASTEXITCODE -eq 0) {
-                    $restoreSuccess = $true
-                    Write-OK 'Packages restored via MyGet mirror'
+                    $script:restoreSuccess = $true
+                    Write-OK 'Packages restored via Azure China mirror'
                 } else {
-                    & dotnet nuget remove source 'myget' 2>&1 | Out-Null
+                    & dotnet nuget remove source 'azure-cn' 2>&1 | Out-Null
+
+                    # Attempt 4: Try MyGet
+                    $mirror2 = 'https://www.myget.org/F/nuget/api/v3/index.json'
+                    Write-Log "Attempt 4: Trying MyGet mirror..."
+                    & dotnet nuget add source $mirror2 -n 'myget' 2>&1 | Out-Null
+                    $restoreOut4 = & dotnet restore XrayVpn.sln --verbosity minimal --source $mirror2 2>&1
+                    $restoreOut4 | ForEach-Object { Write-Log "  restore4: $_" }
+                    if ($LASTEXITCODE -eq 0) {
+                        $script:restoreSuccess = $true
+                        Write-OK 'Packages restored via MyGet mirror'
+                    } else {
+                        & dotnet nuget remove source 'myget' 2>&1 | Out-Null
+                    }
                 }
             }
         }
     }
 
-    if (-not $restoreSuccess) {
+    if (-not $script:restoreSuccess) {
         Die "NuGet restore failed. All sources tried." `
             "This is likely due to NuGet (api.nuget.org) being blocked in your region.`n`nSolutions:`n  1. Use a VPN to access nuget.org temporarily`n  2. Or download packages manually and place in: $env:USERPROFILE\.nuget\packages`n  3. Or configure a corporate NuGet mirror`n`nRequired packages:`n  - CommunityToolkit.Mvvm 8.2.2`n  - Newtonsoft.Json 13.0.3`n`nFull log: $LogFile"
     } else {

@@ -35,7 +35,8 @@ coverage*.json
 coverage*.xml
 
 ## ---- NuGet ----
-*.nupkg
+# Note: local-packages/ folder IS tracked (contains pre-downloaded .nupkg files
+# so users can build without internet access). See local-packages/.gitkeep
 *.snupkg
 .nuget/
 packages/
@@ -43,6 +44,8 @@ packages/
 project.lock.json
 project.fragment.lock.json
 artifacts/
+# Ignore user-downloaded packages but keep our pre-bundled ones
+!local-packages/*.nupkg
 
 ## ---- Publish single-file output ----
 *.exe.bak
@@ -80,13 +83,15 @@ $RECYCLE.BIN/
 secrets.json
 credentials.json
 
-## ---- External dependencies (downloaded by script) ----
-# Don't include xray.exe, wintun.dll, geoip.dat, geosite.dat in git
-# Users must run scripts/download-deps.ps1 to fetch them
-src/XrayVpnApp/Resources/xray.exe
-src/XrayVpnApp/Resources/wintun.dll
-src/XrayVpnApp/Resources/geoip.dat
-src/XrayVpnApp/Resources/geosite.dat
+## ---- External dependencies ----
+# These ARE now bundled in the repo (in src/XrayVpnApp/Resources/)
+# so users can build completely offline (no internet needed).
+# Previously they were git-ignored and downloaded by scripts/download-deps.ps1.
+# Now we ship them as part of the source release for sanction-friendly install.
+# !src/XrayVpnApp/Resources/xray.exe
+# !src/XrayVpnApp/Resources/wintun.dll
+# !src/XrayVpnApp/Resources/geoip.dat
+# !src/XrayVpnApp/Resources/geosite.dat
 
 ## ---- App data (created at runtime) ----
 *.dat.bak
