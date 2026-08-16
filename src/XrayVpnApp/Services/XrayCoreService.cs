@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using XrayVpnApp.Models;
@@ -39,6 +39,9 @@ public class XrayCoreService
         if (!File.Exists(XrayExePath))
         {
             _logger.Error($"xray.exe not found at {XrayExePath}");
+            _logger.Error($"AppResourceDir = {App.AppResourceDir}");
+            _logger.Error($"EXE path = {Environment.ProcessPath}");
+            _logger.Error($"BaseDirectory = {AppContext.BaseDirectory}");
             return false;
         }
 
@@ -48,7 +51,9 @@ public class XrayCoreService
             _configPath = Path.Combine(App.AppConfigDir, "config.json");
             File.WriteAllText(_configPath, configJson);
 
-            _logger.Info("Xray config generated. Starting core...");
+            _logger.Info($"Xray config generated at: {_configPath}");
+            _logger.Info($"Starting xray.exe from: {XrayExePath}");
+            _logger.Info($"Working directory: {App.AppResourceDir}");
 
             var psi = new ProcessStartInfo
             {
@@ -89,6 +94,18 @@ public class XrayCoreService
             _xrayProcess.BeginErrorReadLine();
 
             _logger.Info($"Xray started, PID={_xrayProcess.Id}");
+
+            // Give xray 1.5 seconds to start (or fail)
+            System.Threading.Thread.Sleep(1500);
+
+            // Check if process exited prematurely
+            if (_xrayProcess.HasExited)
+            {
+                _logger.Error($"Xray exited prematurely with code {_xrayProcess.ExitCode}");
+                _logger.Error("This usually means the config is invalid or xray.exe cannot run.");
+                return false;
+            }
+
             return true;
         }
         catch (Exception ex)

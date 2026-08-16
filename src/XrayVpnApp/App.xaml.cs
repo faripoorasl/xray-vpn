@@ -1,4 +1,5 @@
-using System.IO;
+﻿using System.IO;
+using System.Linq;
 using System.Windows;
 using XrayVpnApp.Services;
 
@@ -18,8 +19,51 @@ public partial class App : Application
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "XrayVpn", "logs");
 
-    public static string AppResourceDir { get; } = Path.Combine(
-        AppContext.BaseDirectory, "Resources");
+    public static string AppResourceDir { get; } = GetResourceDir();
+
+    /// <summary>
+    /// In single-file publish mode, AppContext.BaseDirectory points to the
+    /// extraction temp folder, not the actual EXE folder. We need to use
+    /// the EXE's real directory to find xray.exe and wintun.dll.
+    /// </summary>
+    private static string GetResourceDir()
+    {
+        // Try multiple sources in order of preference
+        var candidates = new List<string>();
+
+        // 1. EXE directory (most reliable for single-file publish)
+        try
+        {
+            var exePath = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(exePath))
+            {
+                candidates.Add(Path.Combine(Path.GetDirectoryName(exePath)!, "Resources"));
+            }
+        }
+        catch { }
+
+        // 2. AppDomain base directory
+        try
+        {
+            candidates.Add(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources"));
+        }
+        catch { }
+
+        // 3. AppContext.BaseDirectory (works for normal builds)
+        candidates.Add(Path.Combine(AppContext.BaseDirectory, "Resources"));
+
+        // Return the first one that contains xray.exe
+        foreach (var c in candidates.Where(Directory.Exists).Distinct())
+        {
+            if (File.Exists(Path.Combine(c, "xray.exe")))
+            {
+                return c;
+            }
+        }
+
+        // Fallback: return the first candidate
+        return candidates.FirstOrDefault() ?? Path.Combine(AppContext.BaseDirectory, "Resources");
+    }
 
     public static AppSettingsService Settings { get; private set; } = null!;
     public static XrayCoreService XrayCore { get; private set; } = null!;
