@@ -127,6 +127,7 @@ public partial class MainViewModel : ObservableObject
             App.Logger.Error($"Connect failed: {ex.Message}");
             IsConnecting = false;
             ResetStatus();
+            return false;
         }
     }
 
