@@ -1,4 +1,4 @@
-#Requires -Version 5.0
+﻿#Requires -Version 5.0
 <#
 .SYNOPSIS
     Downloads external dependencies (xray-core, wintun.dll, geoip.dat, geosite.dat)

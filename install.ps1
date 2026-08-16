@@ -1,4 +1,4 @@
-#Requires -Version 5.0
+﻿#Requires -Version 5.0
 <#
 .SYNOPSIS
     One-click installer for Xray VPN.
@@ -119,7 +119,9 @@ if (-not $dotnetOk) {
     Write-Host "    .NET 8 SDK not found. Installing..."
     if (Install-WithWinget -PackageId "Microsoft.DotNet.SDK.8" -DisplayName ".NET 8 SDK") {
         # Refresh PATH
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        $machinePath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
+        $userPath = [System.Environment]::GetEnvironmentVariable('Path', 'User')
+        $env:Path = "$machinePath;$userPath"
         if (Test-Command "dotnet") {
             Write-OK ".NET 8 SDK installed"
         } else {
@@ -145,7 +147,9 @@ if (Test-Command "git") {
 } else {
     Write-Host "    Git not found. Installing..."
     if (Install-WithWinget -PackageId "Git.Git" -DisplayName "Git") {
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        $machinePath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
+        $userPath = [System.Environment]::GetEnvironmentVariable('Path', 'User')
+        $env:Path = "$machinePath;$userPath"
         Write-OK "Git installed"
     } else {
         Write-Warn2 "Could not install Git via winget."
@@ -167,7 +171,9 @@ if (Test-Command "iscc") {
     $installInno = Read-Host "    Install Inno Setup now? (Y/n)"
     if ($installInno -notmatch "^[nN]") {
         Install-WithWinget -PackageId "JRSoftware.InnoSetup" -DisplayName "Inno Setup" | Out-Null
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        $machinePath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
+        $userPath = [System.Environment]::GetEnvironmentVariable('Path', 'User')
+        $env:Path = "$machinePath;$userPath"
         if (Test-Command "iscc") {
             Write-OK "Inno Setup installed"
         } else {

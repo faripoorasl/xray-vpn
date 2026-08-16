@@ -1,4 +1,4 @@
-#Requires -Version 5.0
+﻿#Requires -Version 5.0
 <#
 .SYNOPSIS
     Runs the Xray VPN app in dev mode (no publish).

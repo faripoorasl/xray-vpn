@@ -1,4 +1,4 @@
-#Requires -Version 5.0
+﻿#Requires -Version 5.0
 <#
 .SYNOPSIS
     Publishes the local Xray VPN git repository to a new GitHub repository.

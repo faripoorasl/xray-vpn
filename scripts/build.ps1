@@ -1,4 +1,4 @@
-#Requires -Version 5.0
+﻿#Requires -Version 5.0
 <#
 .SYNOPSIS
     Builds the Xray VPN client for Windows 11.
