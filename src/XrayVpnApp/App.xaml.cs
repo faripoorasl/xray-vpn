@@ -25,6 +25,7 @@ public partial class App : Application
     /// In single-file publish mode, AppContext.BaseDirectory points to the
     /// extraction temp folder, not the actual EXE folder. We need to use
     /// the EXE's real directory to find xray.exe and wintun.dll.
+    /// Also checks both with and without 'Resources' subfolder.
     /// </summary>
     private static string GetResourceDir()
     {
@@ -37,7 +38,9 @@ public partial class App : Application
             var exePath = Environment.ProcessPath;
             if (!string.IsNullOrEmpty(exePath))
             {
-                candidates.Add(Path.Combine(Path.GetDirectoryName(exePath)!, "Resources"));
+                var exeDir = Path.GetDirectoryName(exePath)!;
+                candidates.Add(Path.Combine(exeDir, "Resources"));
+                candidates.Add(exeDir); // fallback: deps next to EXE
             }
         }
         catch { }
@@ -45,12 +48,16 @@ public partial class App : Application
         // 2. AppDomain base directory
         try
         {
-            candidates.Add(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources"));
+            var adDir = AppDomain.CurrentDomain.BaseDirectory;
+            candidates.Add(Path.Combine(adDir, "Resources"));
+            candidates.Add(adDir);
         }
         catch { }
 
         // 3. AppContext.BaseDirectory (works for normal builds)
-        candidates.Add(Path.Combine(AppContext.BaseDirectory, "Resources"));
+        var acDir = AppContext.BaseDirectory;
+        candidates.Add(Path.Combine(acDir, "Resources"));
+        candidates.Add(acDir);
 
         // Return the first one that contains xray.exe
         foreach (var c in candidates.Where(Directory.Exists).Distinct())

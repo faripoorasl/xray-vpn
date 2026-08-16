@@ -500,16 +500,34 @@ try {
 
     Write-OK "Build succeeded (XrayVpn.exe = {0:N0} bytes)" -f $exeSize
 
-    # Copy dependencies to publish folder
+    # Copy dependencies to BOTH publish folder AND publish\Resources folder
+    # The app looks in <exe_dir>\Resources\ for xray.exe (AppResourceDir),
+    # so we MUST copy them there. Also copy to <exe_dir>\ as fallback.
+    $publishResourcesDir = Join-Path $publishDir 'Resources'
+    if (-not (Test-Path $publishResourcesDir)) {
+        New-Item -ItemType Directory -Path $publishResourcesDir -Force | Out-Null
+    }
+
     foreach ($f in $expected) {
         $src = Join-Path $resourcesDir $f
-        $dst = Join-Path $publishDir $f
-        if ((Test-Path $src) -and (-not (Test-Path $dst))) {
+        if (Test-Path $src) {
+            # Copy to publishDir\Resources\ (where app expects)
+            $dst = Join-Path $publishResourcesDir $f
             Copy-Item $src $dst -Force
-            Write-Log "  Copied $f to publish folder"
+            Write-Log "  Copied $f to publish\Resources folder"
+
+            # Also copy to publishDir\ (next to XrayVpn.exe, as fallback)
+            $dst2 = Join-Path $publishDir $f
+            Copy-Item $src $dst2 -Force
+            Write-Log "  Copied $f to publish folder (fallback)"
+
+            $size = (Get-Item $src).Length
+            Write-Host ("    [OK] {0,-15} {1,10:N0} bytes" -f $f, $size) -ForegroundColor Green
+        } else {
+            Write-Warn2 "Source missing: $src"
         }
     }
-    Write-OK 'Dependencies copied to publish folder'
+    Write-OK 'Dependencies copied to publish folder and Resources subfolder'
 
     # Build installer if Inno Setup is available
     if ($innoInstalled) {
