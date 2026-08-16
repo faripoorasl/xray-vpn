@@ -44,7 +44,7 @@
                     <TextBlock Grid.Row="1" Grid.Column="1" x:Name="XrayVersionLabel" Text="—" Margin="0,0,0,12"/>
 
                     <TextBlock Grid.Row="2" Grid.Column="0" Text="{DynamicResource License}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,12"/>
-                    <TextBlock Grid.Row="2" Grid.Column="1" Text="MIT (free for personal & commercial use)" Margin="0,0,0,12"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="MIT (free for personal &amp; commercial use)" Margin="0,0,0,12"/>
 
                     <TextBlock Grid.Row="3" Grid.Column="0" Text="{DynamicResource OpenSource}" Foreground="{StaticResource TextSecondaryBrush}"/>
                     <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
