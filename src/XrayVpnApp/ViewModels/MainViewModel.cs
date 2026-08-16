@@ -2,7 +2,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
@@ -35,10 +34,10 @@ public partial class MainViewModel : ObservableObject
     private string _connectButtonText = "Connect";
 
     [ObservableProperty]
-    private string _connectButtonIcon = "▶";
+    private string _connectButtonIcon = "\u25B6"; // play symbol
 
     [ObservableProperty]
-    private string _connectedServerName = "—";
+    private string _connectedServerName = "\u2014"; // em dash
 
     [ObservableProperty]
     private string _downloadSpeedDisplay = "0.0 Mbps";
@@ -54,7 +53,7 @@ public partial class MainViewModel : ObservableObject
 
     public bool IsClosing = false;
     public ObservableCollection<ServerConfig> Servers => App.Settings.Store.Servers;
-    public ObservableCollection<SubscriptionSource> Subscriptions => 
+    public ObservableCollection<SubscriptionSource> Subscriptions =>
         new(App.Settings.Store.Subscriptions);
 
     private ServerConfig? _activeServer;
@@ -68,24 +67,29 @@ public partial class MainViewModel : ObservableObject
     {
         if (SelectedServer == null)
         {
-            MessageBox.Show(App.Language.Current == "fa"
-                ? "ابتدا یک سرور انتخاب کنید"
-                : "Please select a server first",
-                App.Language.Current == "fa" ? "توجه" : "Notice");
+            string msg1 = App.Language.Current == "fa"
+                ? "\u0627\u0628\u062A\u062F\u0627 \u06CC\u06A9 \u0633\u0631\u0648\u0631 \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC\u062F"
+                : "Please select a server first";
+            string title1 = App.Language.Current == "fa" ? "\u062A\u0648\u062C\u0647" : "Notice";
+            MessageBox.Show(msg1, title1);
             return false;
         }
 
         IsConnecting = true;
-        StatusText = App.Language.Current == "fa" ? "Ø¯Ø± Ø­Ø§Ù Ø§ØªØµØ§Ù..." : "Connecting...";
+        string connectingText = App.Language.Current == "fa"
+            ? "\u062F\u0631 \u062D\u0627\u0644 \u0627\u062A\u0635\u0627\u0644..."
+            : "Connecting...";
+        StatusText = connectingText;
 
         try
         {
             // 1. Start TUN adapter FIRST (so the 10.10.0.2 IP exists for Xray to bind to)
             if (!App.TunAdapter.Start(App.Settings.Current))
             {
-                MessageBox.Show(App.Language.Current == "fa"
-                    ? "Ø®Ø·Ø§ Ø¯Ø± Ø§ÛØ¬Ø§Ø¯ Ø§Ø¯Ø§Ù¾ØªÙØ± TUN. ÙØ·ÙØ¦Ù Ø´ÙÛØ¯ Ø¨Ø±ÙØ§ÙÙ Ø¨Ù ØµÙØ±Øª Ø§Ø¯ÙÛÙ Ø§Ø¬Ø±Ø§ Ø´Ø¯Ù Ø§Ø³Øª."
-                    : "Failed to create TUN adapter. Make sure the app is running as Administrator.");
+                string msg = App.Language.Current == "fa"
+                    ? "\u062E\u0637\u0627 \u062F\u0631 \u0627\u06CC\u062C\u0627\u062F \u0627\u062F\u0627\u067E\u062A\u0648\u0631 TUN. \u0645\u0637\u0645\u0626\u0646 \u0634\u0648\u06CC\u062F \u0628\u0631\u0646\u0627\u0645\u0647 \u0628\u0647 \u0635\u0648\u0631\u062A \u0627\u062F\u0645\u06CC\u0646 \u0627\u062C\u0631\u0627 \u0634\u062F\u0647 \u0627\u0633\u062A."
+                    : "Failed to create TUN adapter. Make sure the app is running as Administrator.";
+                MessageBox.Show(msg);
                 IsConnecting = false;
                 ResetStatus();
                 return false;
@@ -97,9 +101,10 @@ public partial class MainViewModel : ObservableObject
             if (!App.XrayCore.Start(SelectedServer, App.Settings.Current, tunMode: 1))
             {
                 App.TunAdapter.Stop();
-                MessageBox.Show(App.Language.Current == "fa"
-                    ? "Ø®Ø·Ø§ Ø¯Ø± Ø±Ø§ÙâØ§ÙØ¯Ø§Ø²Û ÙØ³ØªÙ Xray"
-                    : "Failed to start Xray core");
+                string msg = App.Language.Current == "fa"
+                    ? "\u062E\u0637\u0627 \u062F\u0631 \u0631\u0627\u0647\u200C\u0627\u0646\u062F\u0627\u0632\u06CC \u0647\u0633\u062A\u0647 Xray"
+                    : "Failed to start Xray core";
+                MessageBox.Show(msg);
                 IsConnecting = false;
                 ResetStatus();
                 return false;
@@ -114,10 +119,12 @@ public partial class MainViewModel : ObservableObject
             _activeServer = SelectedServer;
             IsConnected = true;
             IsConnecting = false;
-            StatusText = App.Language.Current == "fa" ? "متصل" : "Connected";
+            StatusText = App.Language.Current == "fa" ? "\u0645\u062A\u0635\u0644" : "Connected";
             StatusBackground = "#6BB700";
-            ConnectButtonText = App.Language.Current == "fa" ? "قطع اتصال" : "Disconnect";
-            ConnectButtonIcon = "■";
+            ConnectButtonText = App.Language.Current == "fa"
+                ? "\u0642\u0637\u0639 \u0627\u062A\u0635\u0627\u0644"
+                : "Disconnect";
+            ConnectButtonIcon = "\u25A0"; // square symbol
             ConnectedServerName = SelectedServer.Remark;
 
             App.Settings.Current.LastServerId = SelectedServer.Id;
@@ -137,7 +144,9 @@ public partial class MainViewModel : ObservableObject
     public async Task DisconnectAsync()
     {
         IsConnecting = true;
-        StatusText = App.Language.Current == "fa" ? "در حال قطع..." : "Disconnecting...";
+        StatusText = App.Language.Current == "fa"
+            ? "\u062F\u0631 \u062D\u0627\u0644 \u0642\u0637\u0639..."
+            : "Disconnecting...";
 
         await Task.Run(() =>
         {
@@ -162,11 +171,11 @@ public partial class MainViewModel : ObservableObject
 
     private void ResetStatus()
     {
-        StatusText = App.Language.Current == "fa" ? "قطع" : "Disconnected";
+        StatusText = App.Language.Current == "fa" ? "\u0642\u0637\u0639" : "Disconnected";
         StatusBackground = "#C50F1F";
-        ConnectButtonText = App.Language.Current == "fa" ? "اتصال" : "Connect";
-        ConnectButtonIcon = "▶";
-        ConnectedServerName = "—";
+        ConnectButtonText = App.Language.Current == "fa" ? "\u0627\u062A\u0635\u0627\u0644" : "Connect";
+        ConnectButtonIcon = "\u25B6";
+        ConnectedServerName = "\u2014";
         DownloadSpeedDisplay = "0.0 Mbps";
         UploadSpeedDisplay = "0.0 Mbps";
         ConnectedDurationDisplay = "00:00:00";
@@ -203,7 +212,7 @@ public partial class MainViewModel : ObservableObject
         App.Settings.SaveStore();
         MessageBox.Show(
             (string)Application.Current.FindResource("MsgConfigAdded"),
-            "✓",
+            "\u2713",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
     }
