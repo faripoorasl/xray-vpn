@@ -367,7 +367,8 @@ try {
 
         if ($nupkgCount -gt 0) {
             Write-Log 'Attempt 1: dotnet restore using LOCAL packages (offline)...'
-            $restoreOut = & dotnet restore XrayVpn.sln --verbosity minimal --source $localPkgsDir --source 'https://api.nuget.org/v3/index.json' 2>&1
+            # Use only local source to avoid path joining bug in dotnet CLI
+            $restoreOut = & dotnet restore XrayVpn.sln --verbosity minimal --source $localPkgsDir 2>&1
             $restoreOut | ForEach-Object { Write-Log "  restore: $_" }
 
             if ($LASTEXITCODE -eq 0) {

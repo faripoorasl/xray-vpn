@@ -16,3 +16,7 @@ global using MessageBoxResult = System.Windows.MessageBoxResult;
 global using FlowDirection = System.Windows.FlowDirection;
 global using FrameworkElement = System.Windows.FrameworkElement;
 global using ResourceDictionary = System.Windows.ResourceDictionary;
+global using Color = System.Windows.Media.Color;
+global using Clipboard = System.Windows.Clipboard;
+global using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+global using SaveFileDialog = Microsoft.Win32.SaveFileDialog;

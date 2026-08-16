@@ -1,5 +1,6 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
+using XrayVpnApp.Services;
 using XrayVpnApp.ViewModels;
 
 namespace XrayVpnApp.Views;

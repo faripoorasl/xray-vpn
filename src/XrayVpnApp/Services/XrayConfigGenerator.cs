@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using XrayVpnApp.Models;
@@ -62,39 +62,39 @@ public static class XrayConfigGenerator
             w.WriteNumber("port", 443);
             w.WritePropertyName("domains");
             w.WriteStartArray();
-            w.WriteString("geosite:geolocation-!cn");
-            w.WriteString("geosite:category-ads-all");
+            w.WriteStringValue("geosite:geolocation-!cn");
+            w.WriteStringValue("geosite:category-ads-all");
             w.WriteEndArray();
             w.WriteEndObject();
             w.WriteStartObject();
             w.WriteString("address", s.LocalDns);
             w.WritePropertyName("domains");
             w.WriteStartArray();
-            w.WriteString("geosite:cn");
-            w.WriteString("geosite:category-ir");
+            w.WriteStringValue("geosite:cn");
+            w.WriteStringValue("geosite:category-ir");
             w.WriteEndArray();
             w.WritePropertyName("expectIPs");
             w.WriteStartArray();
-            w.WriteString("geoip:cn");
-            w.WriteString("geoip:private");
+            w.WriteStringValue("geoip:cn");
+            w.WriteStringValue("geoip:private");
             w.WriteEndArray();
             w.WriteEndObject();
-            w.WriteString("localhost");
+            w.WriteStringValue("localhost");
             w.WriteEndArray();
 
             w.WritePropertyName("queryStrategy");
-            w.WriteString("UseIP");
+            w.WriteStringValue("UseIP");
 
             w.WritePropertyName("tag");
-            w.WriteString("dns_inbound");
+            w.WriteStringValue("dns_inbound");
         }
         else
         {
             w.WritePropertyName("servers");
             w.WriteStartArray();
-            w.WriteString(s.RemoteDns);
-            w.WriteString(s.LocalDns);
-            w.WriteString("localhost");
+            w.WriteStringValue(s.RemoteDns);
+            w.WriteStringValue(s.LocalDns);
+            w.WriteStringValue("localhost");
             w.WriteEndArray();
         }
 
@@ -122,9 +122,9 @@ public static class XrayConfigGenerator
         w.WriteBoolean("enabled", true);
         w.WritePropertyName("destOverride");
         w.WriteStartArray();
-        w.WriteString("http");
-        w.WriteString("tls");
-        w.WriteString("quic");
+        w.WriteStringValue("http");
+        w.WriteStringValue("tls");
+        w.WriteStringValue("quic");
         w.WriteEndArray();
         w.WriteEndObject();
         w.WriteEndObject();
@@ -143,8 +143,8 @@ public static class XrayConfigGenerator
         w.WriteBoolean("enabled", true);
         w.WritePropertyName("destOverride");
         w.WriteStartArray();
-        w.WriteString("http");
-        w.WriteString("tls");
+        w.WriteStringValue("http");
+        w.WriteStringValue("tls");
         w.WriteEndArray();
         w.WriteEndObject();
         w.WriteEndObject();
@@ -167,9 +167,9 @@ public static class XrayConfigGenerator
             w.WriteBoolean("enabled", true);
             w.WritePropertyName("destOverride");
             w.WriteStartArray();
-            w.WriteString("http");
-            w.WriteString("tls");
-            w.WriteString("quic");
+            w.WriteStringValue("http");
+            w.WriteStringValue("tls");
+            w.WriteStringValue("quic");
             w.WriteEndArray();
             w.WriteEndObject();
             w.WriteEndObject();
@@ -356,7 +356,7 @@ public static class XrayConfigGenerator
             w.WriteString("method", "GET");
             w.WritePropertyName("path");
             w.WriteStartArray();
-            w.WriteString(string.IsNullOrEmpty(server.Path) ? "/" : server.Path);
+            w.WriteStringValue(string.IsNullOrEmpty(server.Path) ? "/" : server.Path);
             w.WriteEndArray();
             w.WritePropertyName("headers");
             w.WriteStartObject();
@@ -386,10 +386,10 @@ public static class XrayConfigGenerator
             w.WriteStartObject();
             w.WriteString("type", "field");
             w.WritePropertyName("outboundTag");
-            w.WriteString("block");
+            w.WriteStringValue("block");
             w.WritePropertyName("domain");
             w.WriteStartArray();
-            w.WriteString("geosite:category-ads-all");
+            w.WriteStringValue("geosite:category-ads-all");
             w.WriteEndArray();
             w.WriteEndObject();
         }
@@ -410,7 +410,7 @@ public static class XrayConfigGenerator
             w.WriteString("outboundTag", "direct");
             w.WritePropertyName("ip");
             w.WriteStartArray();
-            w.WriteString("geoip:private");
+            w.WriteStringValue("geoip:private");
             w.WriteEndArray();
             w.WriteEndObject();
         }
@@ -423,9 +423,9 @@ public static class XrayConfigGenerator
             w.WriteString("outboundTag", "direct");
             w.WritePropertyName("domain");
             w.WriteStartArray();
-            w.WriteString("geosite:category-ir");
-            w.WriteString("domain:ir");
-            w.WriteString("domain:ایران");
+            w.WriteStringValue("geosite:category-ir");
+            w.WriteStringValue("domain:ir");
+            w.WriteStringValue("domain:ایران");
             w.WriteEndArray();
             w.WriteEndObject();
 
@@ -434,7 +434,7 @@ public static class XrayConfigGenerator
             w.WriteString("outboundTag", "direct");
             w.WritePropertyName("ip");
             w.WriteStartArray();
-            w.WriteString("geoip:ir");
+            w.WriteStringValue("geoip:ir");
             w.WriteEndArray();
             w.WriteEndObject();
         }

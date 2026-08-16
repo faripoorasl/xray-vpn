@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
 namespace XrayVpnApp.Services;
 
@@ -53,6 +53,14 @@ public class DnsService
             _logger.Error($"ResetSystemDns failed: {ex.Message}");
             return false;
         }
+    }
+
+    /// <summary>
+    /// Alias for ResetSystemDns (called during app shutdown).
+    /// </summary>
+    public void RestoreDns()
+    {
+        ResetSystemDns();
     }
 
     public void FlushDnsCache()

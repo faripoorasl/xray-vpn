@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -64,7 +64,7 @@ public partial class MainViewModel : ObservableObject
     #region Connect / Disconnect
 
     [RelayCommand]
-    public async Task ConnectAsync()
+    public async Task<bool> ConnectAsync()
     {
         if (SelectedServer == null)
         {
@@ -72,7 +72,7 @@ public partial class MainViewModel : ObservableObject
                 ? "ابتدا یک سرور انتخاب کنید"
                 : "Please select a server first",
                 App.Language.Current == "fa" ? "توجه" : "Notice");
-            return;
+            return false;
         }
 
         IsConnecting = true;
@@ -88,7 +88,7 @@ public partial class MainViewModel : ObservableObject
                     : "Failed to start Xray core");
                 IsConnecting = false;
                 ResetStatus();
-                return;
+                return false;
             }
 
             await Task.Delay(800);
@@ -102,7 +102,7 @@ public partial class MainViewModel : ObservableObject
                     : "Failed to create TUN adapter. Make sure the app is running as Administrator.");
                 IsConnecting = false;
                 ResetStatus();
-                return;
+                return false;
             }
 
             // 3. Set DNS
@@ -120,6 +120,7 @@ public partial class MainViewModel : ObservableObject
 
             App.Settings.Current.LastServerId = SelectedServer.Id;
             App.Settings.SaveSettings();
+            return true;
         }
         catch (Exception ex)
         {
