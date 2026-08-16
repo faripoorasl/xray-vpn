@@ -350,17 +350,72 @@ Write-OK 'All dependencies present'
 # ============================================================
 Write-Step 'Step 7/9 - Restoring NuGet packages...'
 
+# Force TLS 1.2 for older .NET Framework compatibility
+try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+} catch {}
+
 Push-Location $RepoDir
 try {
-    Write-Log 'Running dotnet restore...'
-    $restoreOut = & dotnet restore XrayVpn.sln 2>&1
+    # First, check current NuGet sources
+    Write-Log 'Checking NuGet sources...'
+    $sources = & dotnet nuget list source 2>&1
+    $sources | ForEach-Object { Write-Log "  source: $_" }
+
+    # If no sources, add nuget.org
+    $hasNugetOrg = $sources | Where-Object { $_ -match 'nuget.org' -or $_ -match 'api.nuget.org' }
+    if (-not $hasNugetOrg) {
+        Write-Log 'No NuGet source configured. Adding nuget.org...'
+        & dotnet nuget add source 'https://api.nuget.org/v3/index.json' -n 'nuget.org' 2>&1 | ForEach-Object { Write-Log "  add source: $_" }
+    }
+
+    # Attempt 1: restore with default sources
+    Write-Log 'Attempt 1: dotnet restore with default sources...'
+    $restoreOut = & dotnet restore XrayVpn.sln --verbosity minimal 2>&1
     $restoreOut | ForEach-Object { Write-Log "  restore: $_" }
 
-    if ($LASTEXITCODE -ne 0) {
-        Die "NuGet restore failed (exit code $LASTEXITCODE)" `
-            "This is usually a network issue.`nCheck your internet connection and try again.`nIf behind a proxy, configure NuGet:`n  dotnet nuget add source <URL> -n ProxySource"
+    $restoreSuccess = $LASTEXITCODE -eq 0
+
+    # Check for NU1100/NU1101/NU1102 errors (package resolution failures)
+    if (-not $restoreSuccess) {
+        $nuErrors = $restoreOut | Where-Object { $_ -match 'NU1100|NU1101|NU1102' }
+        if ($nuErrors) {
+            Write-Warn2 'Default NuGet source failed (likely blocked/sanctions issue).'
+
+            # Attempt 2: Try Azure China mirror
+            $mirror1 = 'https://nuget.cdn.azure.cn/v3/index.json'
+            Write-Log "Attempt 2: Trying Azure China mirror..."
+            & dotnet nuget add source $mirror1 -n 'azure-cn' 2>&1 | Out-Null
+            $restoreOut2 = & dotnet restore XrayVpn.sln --verbosity minimal --source $mirror1 2>&1
+            $restoreOut2 | ForEach-Object { Write-Log "  restore2: $_" }
+            if ($LASTEXITCODE -eq 0) {
+                $restoreSuccess = $true
+                Write-OK 'Packages restored via Azure China mirror'
+            } else {
+                & dotnet nuget remove source 'azure-cn' 2>&1 | Out-Null
+
+                # Attempt 3: Try MyGet
+                $mirror2 = 'https://www.myget.org/F/nuget/api/v3/index.json'
+                Write-Log "Attempt 3: Trying MyGet mirror..."
+                & dotnet nuget add source $mirror2 -n 'myget' 2>&1 | Out-Null
+                $restoreOut3 = & dotnet restore XrayVpn.sln --verbosity minimal --source $mirror2 2>&1
+                $restoreOut3 | ForEach-Object { Write-Log "  restore3: $_" }
+                if ($LASTEXITCODE -eq 0) {
+                    $restoreSuccess = $true
+                    Write-OK 'Packages restored via MyGet mirror'
+                } else {
+                    & dotnet nuget remove source 'myget' 2>&1 | Out-Null
+                }
+            }
+        }
     }
-    Write-OK 'Packages restored'
+
+    if (-not $restoreSuccess) {
+        Die "NuGet restore failed. All sources tried." `
+            "This is likely due to NuGet (api.nuget.org) being blocked in your region.`n`nSolutions:`n  1. Use a VPN to access nuget.org temporarily`n  2. Or download packages manually and place in: $env:USERPROFILE\.nuget\packages`n  3. Or configure a corporate NuGet mirror`n`nRequired packages:`n  - CommunityToolkit.Mvvm 8.2.2`n  - Newtonsoft.Json 13.0.3`n`nFull log: $LogFile"
+    } else {
+        Write-OK 'Packages restored'
+    }
 } finally {
     Pop-Location
 }
