@@ -186,10 +186,10 @@ public class TunService
                 return false;
             }
 
-            var tun2socksArgs = $"-device \"{settings.TunAdapterName}\" " +
-                                $"-proxy socks5://127.0.0.1:{settings.SocksPort} " +
-                                $"-mtu {settings.TunMtu} " +
-                                $"-log-level silent";
+            var tun2socksArgs = $"--device \"{settings.TunAdapterName}\" " +
+                                $"--proxy socks5://127.0.0.1:{settings.SocksPort} " +
+                                $"--mtu {settings.TunMtu} " +
+                                $"--loglevel silent";
 
             _logger.Info($"tun2socks.exe {tun2socksArgs}");
 
