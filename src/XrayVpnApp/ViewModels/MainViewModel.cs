@@ -83,26 +83,12 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            // 1. Start TUN adapter FIRST (so the 10.10.0.2 IP exists for Xray to bind to)
-            if (!App.TunAdapter.Start(App.Settings.Current))
+            // 1. Start Xray in SOCKS+HTTP proxy mode (no TUN needed)
+            //    This is the most reliable mode - works for all browsers and most apps
+            if (!App.XrayCore.Start(SelectedServer, App.Settings.Current, tunMode: 0))
             {
                 string msg = App.Language.Current == "fa"
-                    ? "\u062E\u0637\u0627 \u062F\u0631 \u0627\u06CC\u062C\u0627\u062F \u0627\u062F\u0627\u067E\u062A\u0648\u0631 TUN. \u0645\u0637\u0645\u0626\u0646 \u0634\u0648\u06CC\u062F \u0628\u0631\u0646\u0627\u0645\u0647 \u0628\u0647 \u0635\u0648\u0631\u062A \u0627\u062F\u0645\u06CC\u0646 \u0627\u062C\u0631\u0627 \u0634\u062F\u0647 \u0627\u0633\u062A."
-                    : "Failed to create TUN adapter. Make sure the app is running as Administrator.";
-                MessageBox.Show(msg);
-                IsConnecting = false;
-                ResetStatus();
-                return false;
-            }
-
-            await Task.Delay(500);
-
-            // 2. Start Xray (now it can bind to 10.10.0.2:1080)
-            if (!App.XrayCore.Start(SelectedServer, App.Settings.Current, tunMode: 1))
-            {
-                App.TunAdapter.Stop();
-                string msg = App.Language.Current == "fa"
-                    ? "\u062E\u0637\u0627 \u062F\u0631 \u0631\u0627\u0647\u200C\u0627\u0646\u062F\u0627\u0632\u06CC \u0647\u0633\u062A\u0647 Xray"
+                    ? "\u062E\u0637\u0627 \u062F\u0631 \u0631\u0627\u0645\u200C\u0627\u0646\u062F\u0627\u0632\u06CC \u0647\u0633\u062A\u0647 Xray"
                     : "Failed to start Xray core";
                 MessageBox.Show(msg);
                 IsConnecting = false;
@@ -110,10 +96,23 @@ public partial class MainViewModel : ObservableObject
                 return false;
             }
 
-            await Task.Delay(500);
+            await Task.Delay(1000);
 
-            // 3. Set DNS
-            App.Dns.SetSystemDns(App.Settings.Current.RemoteDns, App.Settings.Current.LocalDns);
+            // 2. Set Windows system proxy to Xray's HTTP inbound (127.0.0.1:httpPort)
+            //    This routes all HTTP/HTTPS traffic through Xray
+            if (!App.SystemProxy.Enable(App.Settings.Current.HttpPort, App.Settings.Current.SocksPort))
+            {
+                App.XrayCore.Stop();
+                string msg = App.Language.Current == "fa"
+                    ? "\u062E\u0637\u0627 \u062F\u0631 \u062A\u0646\u0638\u06CC\u0645 \u067E\u0631\u0648\u06A9\u0633\u06CC \u0633\u06CC\u0633\u062A\u0645"
+                    : "Failed to set system proxy";
+                MessageBox.Show(msg);
+                IsConnecting = false;
+                ResetStatus();
+                return false;
+            }
+
+            await Task.Delay(200);
 
             // 4. State
             _activeServer = SelectedServer;
@@ -152,9 +151,10 @@ public partial class MainViewModel : ObservableObject
         {
             try
             {
-                // Stop Xray FIRST, then TUN (reverse of connect order)
+                // Stop in reverse order: SystemProxy -> Xray
+                App.SystemProxy.Disable();
                 App.XrayCore.Stop();
-                App.TunAdapter.Stop();
+                App.TunAdapter.Stop();  // in case TUN was used
                 App.Dns.ResetSystemDns();
             }
             catch (Exception ex)

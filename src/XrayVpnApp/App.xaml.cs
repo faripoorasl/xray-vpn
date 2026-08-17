@@ -75,6 +75,7 @@ public partial class App : Application
     public static AppSettingsService Settings { get; private set; } = null!;
     public static XrayCoreService XrayCore { get; private set; } = null!;
     public static TunService TunAdapter { get; private set; } = null!;
+    public static SystemProxyService SystemProxy { get; private set; } = null!;
     public static RoutingService Routing { get; private set; } = null!;
     public static DnsService Dns { get; private set; } = null!;
     public static ConfigParserService ConfigParser { get; private set; } = null!;
@@ -99,6 +100,7 @@ public partial class App : Application
         ConfigParser = new ConfigParserService(Logger);
         XrayCore = new XrayCoreService(Logger);
         TunAdapter = new TunService(Logger);
+        SystemProxy = new SystemProxyService(Logger);
         Routing = new RoutingService(Logger);
         Dns = new DnsService(Logger);
         Subscription = new SubscriptionService(ConfigParser, Logger);
@@ -114,6 +116,7 @@ public partial class App : Application
         {
             XrayCore?.Stop();
             TunAdapter?.Stop();
+            SystemProxy?.Disable();
             Routing?.RestoreRoutes();
             Dns?.RestoreDns();
             Logger?.Info("=== Xray VPN exited ===");
