@@ -64,8 +64,9 @@ public class TunService
                 return false;
             }
 
-            // Use wintun:// prefix to tell tun2socks to use wintun driver with our adapter name
-            var deviceName = $"wintun://{settings.TunAdapterName}";
+            // tun2socks uses wintun internally on Windows when no driver:// prefix
+            // Just pass the adapter name directly (no prefix)
+            var deviceName = settings.TunAdapterName;
             var tun2socksArgs = $"--device \"{deviceName}\" " +
                                 $"--proxy socks5://127.0.0.1:{settings.SocksPort} " +
                                 $"--mtu {settings.TunMtu} " +
@@ -205,10 +206,12 @@ public class TunService
     {
         try
         {
+            // Use wildcard match because wintun appends " Tunnel" to the name
+            // e.g. "XrayVpn" becomes "XrayVpn Tunnel"
             var psi = new ProcessStartInfo
             {
                 FileName = "powershell",
-                Arguments = $"-NoProfile -Command \"(Get-NetAdapter -Name '{adapterName}' -ErrorAction SilentlyContinue).ifIndex\"",
+                Arguments = $"-NoProfile -Command \"(Get-NetAdapter -Name '{adapterName}*' -ErrorAction SilentlyContinue | Select-Object -First 1).ifIndex\"",
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
@@ -216,7 +219,7 @@ public class TunService
             using var p = Process.Start(psi)!;
             var output = p.StandardOutput.ReadToEnd().Trim();
             p.WaitForExit(5000);
-            _logger.Info($"FindTunAdapterIndex('{adapterName}'): output='{output}'");
+            _logger.Info($"FindTunAdapterIndex('{adapterName}*'): output='{output}'");
             return int.TryParse(output, out var idx) ? idx : 0;
         }
         catch
@@ -302,10 +305,23 @@ public class TunService
     {
         try
         {
-            // Don't include gateway - it causes issues. Just assign IP + mask.
+            // Try both with the original name and with " Tunnel" suffix
+            // wintun appends " Tunnel" to adapter names
             var args = $"interface ip set address name=\"{adapterName}\" static {ip} {mask}";
             var (ok, output, err) = RunProcessWithOutput("netsh", args);
-            _logger.Info($"netsh assign IP: ok={ok}, output='{output}', err='{err}'");
+            _logger.Info($"netsh assign IP (try 1): ok={ok}, output='{output}', err='{err}'");
+
+            if (!ok)
+            {
+                var args2 = $"interface ip set address name=\"{adapterName} Tunnel\" static {ip} {mask}";
+                var (ok2, output2, err2) = RunProcessWithOutput("netsh", args2);
+                _logger.Info($"netsh assign IP (try 2 with ' Tunnel' suffix): ok={ok2}, output='{output2}', err='{err2}'");
+
+                if (ok2)
+                {
+                    _adapterName = $"{adapterName} Tunnel";
+                }
+            }
         }
         catch (Exception ex)
         {
