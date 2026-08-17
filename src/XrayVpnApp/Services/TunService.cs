@@ -133,13 +133,13 @@ public class TunService
 
             // Step 2: Create the adapter
             _logger.Info($"=== TUN Service: Step 2/4 - Creating adapter '{settings.TunAdapterName}' ===");
-            var adapterGuid = Guid.NewGuid();
-            _logger.Info($"Adapter GUID: {adapterGuid}");
 
+            // The wintun.dll signature is: WintunCreateAdapter(LPCWSTR, LPCWSTR, GUID*)
+            // We pass IntPtr.Zero to let wintun generate its own GUID (simpler and safer)
             _adapterHandle = WintunNative.WintunCreateAdapter(
                 settings.TunAdapterName,
                 "XrayVpn",
-                adapterGuid);
+                IntPtr.Zero);
 
             if (_adapterHandle == IntPtr.Zero)
             {

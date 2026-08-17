@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Net;
 using System.Runtime.InteropServices;
 
@@ -12,11 +12,16 @@ internal static class WintunNative
 {
     private const string DLL = "wintun.dll";
 
+    // The official wintun.dll signature is:
+    //   WINTUN_ADAPTER_HANDLE WintunCreateAdapter(
+    //       LPCWSTR Name, LPCWSTR TunnelType, GUID *RequestedGUID)
+    // RequestedGUID is a pointer to a GUID (can be NULL).
+    // We use IntPtr and pass either IntPtr.Zero or a pinned GUID.
     [DllImport(DLL, CallingConvention = CallingConvention.StdCall, SetLastError = true)]
     public static extern IntPtr WintunCreateAdapter(
         [MarshalAs(UnmanagedType.LPWStr)] string name,
         [MarshalAs(UnmanagedType.LPWStr)] string tunnelType,
-        [MarshalAs(UnmanagedType.LPStruct)] Guid? requestedGUID);
+        IntPtr requestedGUID);
 
     [DllImport(DLL, CallingConvention = CallingConvention.StdCall)]
     public static extern void WintunCloseAdapter(IntPtr adapterHandle);
