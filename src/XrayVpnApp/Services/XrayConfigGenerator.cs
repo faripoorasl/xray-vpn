@@ -149,33 +149,8 @@ public static class XrayConfigGenerator
         w.WriteEndObject();
         w.WriteEndObject();
 
-        // TUN inbound (dokodemo-door listening on the TUN IP, captures all traffic)
-        if (tunMode == 1)
-        {
-            w.WriteStartObject();
-            w.WriteString("tag", "tun-in");
-            w.WriteString("listen", s.TunIp);
-            w.WriteNumber("port", 1080);
-            w.WriteString("protocol", "dokodemo-door");
-            w.WritePropertyName("settings");
-            w.WriteStartObject();
-            w.WriteString("network", "tcp,udp");
-            w.WriteBoolean("followRedirect", true);
-            w.WriteEndObject();
-            w.WritePropertyName("sniffing");
-            w.WriteStartObject();
-            w.WriteBoolean("enabled", true);
-            w.WritePropertyName("destOverride");
-            w.WriteStartArray();
-            w.WriteStringValue("http");
-            w.WriteStringValue("tls");
-            w.WriteStringValue("quic");
-            w.WriteEndArray();
-            w.WriteEndObject();
-            w.WriteEndObject();
-        }
+                w.WriteEndArray();
 
-        w.WriteEndArray();
     }
 
     private static void WriteOutbounds(Utf8JsonWriter w, ServerConfig server, AppSettings s)
@@ -393,14 +368,6 @@ public static class XrayConfigGenerator
             w.WriteEndArray();
             w.WriteEndObject();
         }
-
-        // DNS hijack
-        w.WriteStartObject();
-        w.WriteString("type", "field");
-        w.WriteString("inboundTag", "tun-in");
-        w.WriteNumber("port", 53);
-        w.WriteString("outboundTag", "dns-out");
-        w.WriteEndObject();
 
         // Bypass LAN
         if (s.BypassLan)

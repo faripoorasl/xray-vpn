@@ -83,12 +83,11 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            // 1. Start Xray in SOCKS+HTTP proxy mode (no TUN needed)
-            //    This is the most reliable mode - works for all browsers and most apps
+            // 1. Start Xray with SOCKS+HTTP inbounds (no dokodemo-door needed)
             if (!App.XrayCore.Start(SelectedServer, App.Settings.Current, tunMode: 0))
             {
                 string msg = App.Language.Current == "fa"
-                    ? "\u062E\u0637\u0627 \u062F\u0631 \u0631\u0627\u0645\u200C\u0627\u0646\u062F\u0627\u0632\u06CC \u0647\u0633\u062A\u0647 Xray"
+                    ? "خطا در راه‌اندازی هسته Xray"
                     : "Failed to start Xray core";
                 MessageBox.Show(msg);
                 IsConnecting = false;
@@ -98,21 +97,21 @@ public partial class MainViewModel : ObservableObject
 
             await Task.Delay(1000);
 
-            // 2. Set Windows system proxy to Xray's HTTP inbound (127.0.0.1:httpPort)
-            //    This routes all HTTP/HTTPS traffic through Xray
-            if (!App.SystemProxy.Enable(App.Settings.Current.HttpPort, App.Settings.Current.SocksPort))
+            // 2. Start TUN adapter + tun2socks (captures ALL system traffic)
+            //    tun2socks bridges wintun L3 packets to Xray's SOCKS port
+            if (!App.TunAdapter.Start(App.Settings.Current))
             {
                 App.XrayCore.Stop();
                 string msg = App.Language.Current == "fa"
-                    ? "\u062E\u0637\u0627 \u062F\u0631 \u062A\u0646\u0638\u06CC\u0645 \u067E\u0631\u0648\u06A9\u0633\u06CC \u0633\u06CC\u0633\u062A\u0645"
-                    : "Failed to set system proxy";
+                    ? "خطا در ایجاد اداپتور TUN. مطمئن شوید برنامه به صورت ادمین اجرا شده است."
+                    : "Failed to create TUN adapter. Make sure the app is running as Administrator.";
                 MessageBox.Show(msg);
                 IsConnecting = false;
                 ResetStatus();
                 return false;
             }
 
-            await Task.Delay(200);
+            await Task.Delay(500);
 
             // 4. State
             _activeServer = SelectedServer;

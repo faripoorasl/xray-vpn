@@ -292,7 +292,7 @@ Write-OK "Source code ready at: $RepoDir"
 Write-Step 'Step 6/9 - Verifying bundled dependencies...'
 
 $resourcesDir = Join-Path $RepoDir 'src\XrayVpnApp\Resources'
-$expected = @('xray.exe', 'wintun.dll', 'geoip.dat', 'geosite.dat')
+$expected = @('xray.exe', 'wintun.dll', 'tun2socks.exe', 'geoip.dat', 'geosite.dat')
 
 # Check if bundled dependencies exist (offline install)
 $allBundled = $true
