@@ -9,25 +9,27 @@ using XrayVpnApp.Utils;
 namespace XrayVpnApp.Services;
 
 /// <summary>
-/// Creates &amp; manages a wintun TUN adapter + tun2socks to route ALL system
-/// traffic through Xray's SOCKS proxy.
+/// Manages TUN adapter creation via tun2socks.exe.
 ///
 /// Architecture:
-///   1. Create wintun adapter (via wintun.dll)
-///   2. Assign IP 10.10.0.2/24 + gateway 10.10.0.1 via netsh
-///   3. Start tun2socks.exe to bridge TUN packets to Xray's SOCKS port
-///   4. Add default route 0.0.0.0/0 via 10.10.0.1
+///   1. Start Xray (SOCKS+HTTP inbounds)
+///   2. Start tun2socks.exe - it CREATES the TUN adapter
+///   3. Wait for adapter to appear
+///   4. Assign IP 10.10.0.2/24 to the adapter
+///   5. Install default route via the adapter
+///
+/// Note: tun2socks creates its own adapter; we don't need wintun.dll
+/// in our code anymore. tun2socks bundles wintun internally.
 /// </summary>
 public class TunService
 {
     private readonly Logger _logger;
-    private IntPtr _adapterHandle = IntPtr.Zero;
     private Process? _tun2socksProcess;
     private bool _routesInstalled = false;
-    private bool _wintunLoaded = false;
     private int _tunInterfaceIndex = 0;
+    private string _adapterName = string.Empty;
 
-    public bool IsRunning => _adapterHandle != IntPtr.Zero || _tun2socksProcess != null;
+    public bool IsRunning => _tun2socksProcess != null;
     public int InterfaceIndex => _tunInterfaceIndex;
 
     public TunService(Logger logger)
@@ -35,84 +37,10 @@ public class TunService
         _logger = logger;
     }
 
-    /// <summary>
-    /// Find and load wintun.dll (needed for adapter creation).
-    /// </summary>
-    private bool EnsureWintunLoaded()
-    {
-        if (_wintunLoaded) return true;
-
-        try
-        {
-            var candidates = new List<string>();
-            var resDir = App.AppResourceDir;
-            candidates.Add(Path.Combine(resDir, "wintun.dll"));
-
-            try
-            {
-                var exePath = Environment.ProcessPath;
-                if (!string.IsNullOrEmpty(exePath))
-                {
-                    var exeDir = Path.GetDirectoryName(exePath)!;
-                    candidates.Add(Path.Combine(exeDir, "wintun.dll"));
-                    candidates.Add(Path.Combine(exeDir, "Resources", "wintun.dll"));
-                }
-            }
-            catch { }
-
-            candidates.Add(Path.Combine(AppContext.BaseDirectory, "wintun.dll"));
-            candidates.Add(Path.Combine(AppContext.BaseDirectory, "Resources", "wintun.dll"));
-
-            _logger.Info("Searching for wintun.dll:");
-            foreach (var c in candidates.Distinct())
-            {
-                var exists = File.Exists(c);
-                _logger.Info($"  {(exists ? "[FOUND]" : "[miss]")} {c}");
-            }
-
-            foreach (var path in candidates.Distinct())
-            {
-                if (File.Exists(path))
-                {
-                    _logger.Info($"Loading wintun.dll from: {path}");
-                    var dir = Path.GetDirectoryName(path);
-                    if (!string.IsNullOrEmpty(dir))
-                    {
-                        SetDllDirectory(dir);
-                    }
-
-                    var hModule = LoadLibrary(path);
-                    if (hModule != IntPtr.Zero)
-                    {
-                        _logger.Info($"wintun.dll loaded (handle=0x{hModule.ToInt64():X})");
-                        _wintunLoaded = true;
-                        return true;
-                    }
-                    else
-                    {
-                        var err = Marshal.GetLastWin32Error();
-                        _logger.Error($"LoadLibrary failed (Win32 error {err})");
-                    }
-                }
-            }
-
-            _logger.Error("wintun.dll not found!");
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.Error($"EnsureWintunLoaded: {ex.Message}");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Path to tun2socks.exe (bundled in Resources folder).
-    /// </summary>
     private string Tun2socksExePath => Path.Combine(App.AppResourceDir, "tun2socks.exe");
 
     /// <summary>
-    /// Start the full TUN pipeline: wintun adapter + tun2socks + routes.
+    /// Start tun2socks which creates TUN adapter, then assign IP + routes.
     /// </summary>
     public bool Start(Models.AppSettings settings)
     {
@@ -124,91 +52,21 @@ public class TunService
 
         try
         {
-            // Step 1: Load wintun.dll
-            _logger.Info("=== TUN Service: Step 1/5 - Loading wintun.dll ===");
-            if (!EnsureWintunLoaded())
-            {
-                _logger.Error("Cannot start TUN: wintun.dll could not be loaded");
-                return false;
-            }
+            // Step 1: Cleanup any existing adapters from previous runs
+            _logger.Info("=== TUN Service: Step 1/5 - Cleaning up existing adapters ===");
+            CleanupExistingAdapters(settings.TunAdapterName);
 
-            // Step 1.5: Remove any existing adapter with the same name (prevents multiple adapters)
-            _logger.Info($"=== TUN Service: Step 1.5 - Cleaning up existing adapter '{settings.TunAdapterName}' ===");
-            try
-            {
-                var existingHandle = WintunNative.WintunOpenAdapter(settings.TunAdapterName);
-                if (existingHandle != IntPtr.Zero)
-                {
-                    _logger.Info($"Found existing adapter, closing it (handle=0x{existingHandle.ToInt64():X})");
-                    WintunNative.WintunCloseAdapter(existingHandle);
-                    System.Threading.Thread.Sleep(1000);
-                    _logger.Info("Existing adapter removed");
-                }
-                else
-                {
-                    _logger.Info("No existing adapter found, will create new");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Warn($"Error checking for existing adapter: {ex.Message}");
-            }
-
-            // Step 2: Create wintun adapter
-            _logger.Info($"=== TUN Service: Step 2/5 - Creating adapter '{settings.TunAdapterName}' ===");
-            _adapterHandle = WintunNative.WintunCreateAdapter(
-                settings.TunAdapterName,
-                "XrayVpn",
-                IntPtr.Zero);
-
-            if (_adapterHandle == IntPtr.Zero)
-            {
-                var err = Marshal.GetLastWin32Error();
-                _logger.Error($"WintunCreateAdapter failed (Win32 error {err})");
-                _logger.Error("Possible causes: app not running as Admin, antivirus blocking driver install, architecture mismatch");
-                return false;
-            }
-            _logger.Info($"TUN adapter created (handle=0x{_adapterHandle.ToInt64():X})");
-
-            // Step 3: Assign IP + gateway via netsh
-            _logger.Info($"=== TUN Service: Step 3/5 - Assigning IP {settings.TunIp} ===");
-            var netshArgs = $"interface ip set address name=\"{settings.TunAdapterName}\" " +
-                            $"static {settings.TunIp} {settings.TunMask} {settings.TunGateway}";
-            var (netshOk, netshOut, netshErr) = RunProcessWithOutput("netsh", netshArgs);
-            _logger.Info($"netsh output: {netshOut}");
-            if (!string.IsNullOrEmpty(netshErr)) _logger.Warn($"netsh stderr: {netshErr}");
-
-            if (!netshOk)
-            {
-                _logger.Error("Failed to assign IP to TUN adapter");
-                Stop();
-                return false;
-            }
-
-            // Set MTU
-            RunProcessWithOutput("netsh",
-                $"interface ipv4 set subinterface \"{settings.TunAdapterName}\" mtu={settings.TunMtu} store=persistent");
-
-            // Get interface index
-            _tunInterfaceIndex = (int)GetInterfaceIndex(settings.TunAdapterName);
-            if (_tunInterfaceIndex == 0)
-            {
-                _logger.Error("Could not determine TUN interface index");
-                Stop();
-                return false;
-            }
-            _logger.Info($"TUN interface index: {_tunInterfaceIndex}");
-
-            // Step 4: Start tun2socks.exe to bridge TUN packets to Xray's SOCKS port
-            _logger.Info($"=== TUN Service: Step 4/5 - Starting tun2socks ===");
+            // Step 2: Start tun2socks (it creates the adapter)
+            _logger.Info($"=== TUN Service: Step 2/5 - Starting tun2socks ===");
             if (!File.Exists(Tun2socksExePath))
             {
                 _logger.Error($"tun2socks.exe not found at {Tun2socksExePath}");
-                Stop();
                 return false;
             }
 
-            var tun2socksArgs = $"--device \"{settings.TunAdapterName}\" " +
+            // Use wintun:// prefix to tell tun2socks to use wintun driver with our adapter name
+            var deviceName = $"wintun://{settings.TunAdapterName}";
+            var tun2socksArgs = $"--device \"{deviceName}\" " +
                                 $"--proxy socks5://127.0.0.1:{settings.SocksPort} " +
                                 $"--mtu {settings.TunMtu} " +
                                 $"--loglevel info";
@@ -235,7 +93,7 @@ public class TunService
             _tun2socksProcess.ErrorDataReceived += (_, e) =>
             {
                 if (!string.IsNullOrEmpty(e.Data))
-                    _logger.Error($"[tun2socks] {e.Data}");
+                    _logger.Info($"[tun2socks] {e.Data}");  // tun2socks logs to stderr
             };
             _tun2socksProcess.Exited += (_, _) =>
             {
@@ -248,15 +106,44 @@ public class TunService
 
             _logger.Info($"tun2socks started (PID={_tun2socksProcess.Id})");
 
-            // Give tun2socks time to initialize
-            System.Threading.Thread.Sleep(2000);
+            // Give tun2socks time to create the adapter
+            _logger.Info("Waiting 3 seconds for tun2socks to create adapter...");
+            System.Threading.Thread.Sleep(3000);
 
             if (_tun2socksProcess.HasExited)
             {
                 _logger.Error($"tun2socks exited prematurely (code={_tun2socksProcess.ExitCode})");
+                return false;
+            }
+
+            // Step 3: Find the TUN adapter (tun2socks may name it differently)
+            _logger.Info("=== TUN Service: Step 3/5 - Finding TUN adapter ===");
+            _adapterName = settings.TunAdapterName;
+            _tunInterfaceIndex = FindTunAdapterIndex(settings.TunAdapterName);
+
+            if (_tunInterfaceIndex == 0)
+            {
+                // Try alternative names
+                _logger.Info("Adapter not found by exact name, searching for similar...");
+                _tunInterfaceIndex = FindTunAdapterIndexFuzzy(settings.TunAdapterName);
+            }
+
+            if (_tunInterfaceIndex == 0)
+            {
+                _logger.Error("Could not find TUN adapter created by tun2socks");
+                _logger.Error("Available adapters:");
+                ListAllAdapters();
                 Stop();
                 return false;
             }
+            _logger.Info($"Found TUN adapter: index={_tunInterfaceIndex}");
+
+            // Step 4: Assign IP address
+            _logger.Info($"=== TUN Service: Step 4/5 - Assigning IP {settings.TunIp} ===");
+            AssignIpToAdapter(_adapterName, settings.TunIp, settings.TunMask);
+
+            // Verify IP was assigned
+            VerifyAdapterIp(_adapterName);
 
             // Step 5: Install routes
             _logger.Info("=== TUN Service: Step 5/5 - Installing routes ===");
@@ -272,6 +159,184 @@ public class TunService
             Stop();
             return false;
         }
+    }
+
+    /// <summary>
+    /// Remove any existing TUN adapters (from previous runs).
+    /// </summary>
+    private void CleanupExistingAdapters(string adapterName)
+    {
+        try
+        {
+            // Use PowerShell to find and remove adapters with our name (or similar)
+            var psi = new ProcessStartInfo
+            {
+                FileName = "powershell",
+                Arguments = $"-NoProfile -Command \"Get-NetAdapter | Where-Object {{ $_.Name -like '*{adapterName}*' -or $_.InterfaceDescription -like '*tun2socks*' -or $_.InterfaceDescription -like '*wintun*' }} | ForEach-Object {{ Write-Host \\\"Removing: $($_.Name) (ifIndex=$($_.ifIndex))\\\"; Remove-NetAdapter -Name $_.Name -Confirm:$false }}\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+            using var p = Process.Start(psi)!;
+            var output = p.StandardOutput.ReadToEnd();
+            var error = p.StandardError.ReadToEnd();
+            p.WaitForExit(5000);
+            if (!string.IsNullOrEmpty(output))
+            {
+                _logger.Info($"Cleanup output: {output}");
+            }
+            if (!string.IsNullOrEmpty(error))
+            {
+                _logger.Info($"Cleanup errors: {error}");
+            }
+            System.Threading.Thread.Sleep(1000);  // Let Windows clean up
+        }
+        catch (Exception ex)
+        {
+            _logger.Warn($"CleanupExistingAdapters: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Find TUN adapter by exact name.
+    /// </summary>
+    private int FindTunAdapterIndex(string adapterName)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "powershell",
+                Arguments = $"-NoProfile -Command \"(Get-NetAdapter -Name '{adapterName}' -ErrorAction SilentlyContinue).ifIndex\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+            };
+            using var p = Process.Start(psi)!;
+            var output = p.StandardOutput.ReadToEnd().Trim();
+            p.WaitForExit(5000);
+            _logger.Info($"FindTunAdapterIndex('{adapterName}'): output='{output}'");
+            return int.TryParse(output, out var idx) ? idx : 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Find TUN adapter by fuzzy match (for when tun2socks renames it).
+    /// </summary>
+    private int FindTunAdapterIndexFuzzy(string adapterName)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "powershell",
+                Arguments = $"-NoProfile -Command \"Get-NetAdapter | Where-Object {{ $_.Name -like '*{adapterName}*' -or $_.InterfaceDescription -like '*tun2socks*' -or $_.InterfaceDescription -like '*wintun*' }} | Select-Object Name, ifIndex, InterfaceDescription | Format-Table -AutoSize\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+            };
+            using var p = Process.Start(psi)!;
+            var output = p.StandardOutput.ReadToEnd();
+            p.WaitForExit(5000);
+            _logger.Info($"Fuzzy search results:");
+            foreach (var line in output.Split('\n'))
+                if (!string.IsNullOrWhiteSpace(line))
+                    _logger.Info($"  {line.TrimEnd()}");
+
+            // Try to extract ifIndex from the first matching adapter
+            var idxPsi = new ProcessStartInfo
+            {
+                FileName = "powershell",
+                Arguments = $"-NoProfile -Command \"(Get-NetAdapter | Where-Object {{ $_.Name -like '*{adapterName}*' -or $_.InterfaceDescription -like '*tun2socks*' -or $_.InterfaceDescription -like '*wintun*' }} | Select-Object -First 1).ifIndex\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+            };
+            using var p2 = Process.Start(idxPsi)!;
+            var idxOutput = p2.StandardOutput.ReadToEnd().Trim();
+            p2.WaitForExit(5000);
+            _logger.Info($"First matching ifIndex: '{idxOutput}'");
+            return int.TryParse(idxOutput, out var idx) ? idx : 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"FindTunAdapterIndexFuzzy: {ex.Message}");
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// List all network adapters (for debugging).
+    /// </summary>
+    private void ListAllAdapters()
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "powershell",
+                Arguments = "-NoProfile -Command \"Get-NetAdapter | Select-Object Name, ifIndex, InterfaceDescription, Status | Format-Table -AutoSize\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+            };
+            using var p = Process.Start(psi)!;
+            var output = p.StandardOutput.ReadToEnd();
+            p.WaitForExit(5000);
+            foreach (var line in output.Split('\n'))
+                if (!string.IsNullOrWhiteSpace(line))
+                    _logger.Info($"  {line.TrimEnd()}");
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Assign IP address to the TUN adapter.
+    /// </summary>
+    private void AssignIpToAdapter(string adapterName, string ip, string mask)
+    {
+        try
+        {
+            // Don't include gateway - it causes issues. Just assign IP + mask.
+            var args = $"interface ip set address name=\"{adapterName}\" static {ip} {mask}";
+            var (ok, output, err) = RunProcessWithOutput("netsh", args);
+            _logger.Info($"netsh assign IP: ok={ok}, output='{output}', err='{err}'");
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"AssignIpToAdapter: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Verify that IP was actually assigned.
+    /// </summary>
+    private void VerifyAdapterIp(string adapterName)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "netsh",
+                Arguments = $"interface ip show config name=\"{adapterName}\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+            };
+            using var p = Process.Start(psi)!;
+            var output = p.StandardOutput.ReadToEnd();
+            p.WaitForExit(5000);
+            _logger.Info($"Adapter IP config:");
+            foreach (var line in output.Split('\n'))
+                if (!string.IsNullOrWhiteSpace(line))
+                    _logger.Info($"  {line.TrimEnd()}");
+        }
+        catch { }
     }
 
     public void Stop()
@@ -306,10 +371,10 @@ public class TunService
                 }
             }
 
-            if (_adapterHandle != IntPtr.Zero)
+            // Cleanup the adapter
+            if (!string.IsNullOrEmpty(_adapterName))
             {
-                WintunNative.WintunCloseAdapter(_adapterHandle);
-                _adapterHandle = IntPtr.Zero;
+                CleanupExistingAdapters(_adapterName);
             }
 
             _tunInterfaceIndex = 0;
@@ -323,27 +388,30 @@ public class TunService
 
     private void InstallRoutes(Models.AppSettings settings)
     {
-        // First, try to delete any existing default route through this interface
-        var delArgs = $"delete 0.0.0.0 mask 0.0.0.0 {settings.TunGateway}";
-        var (delOk, delOut, delErr) = RunProcessWithOutput("route", delArgs);
-        _logger.Info($"route {delArgs}: ok={delOk}, output={delOut}, err={delErr}");
+        // Use PowerShell's New-NetRoute which is more reliable than `route add`
+        // We route ALL traffic (0.0.0.0/0) through the TUN adapter
+        // The gateway doesn't need to exist - we just need to point to the interface
 
-        // Small delay to let route table settle
-        System.Threading.Thread.Sleep(300);
+        // Method 1: Use netsh (more compatible)
+        var args = $"interface ipv4 add routeprefix=0.0.0.0/0 interface=\"{_adapterName}\" nexthop={settings.TunGateway} metric=5";
+        var (ok, output, err) = RunProcessWithOutput("netsh", args);
+        _logger.Info($"netsh route: ok={ok}, output='{output}', err='{err}'");
 
-        // Now add the new route with low metric (5 = higher priority than default)
-        var args = $"add 0.0.0.0 mask 0.0.0.0 {settings.TunGateway} metric 5 if {_tunInterfaceIndex}";
-        var (ok, output, err) = RunProcessWithOutput("route", args);
-        _logger.Info($"route {args}: ok={ok}, output={output}, err={err}");
-
-        // Verify route was added
-        var (printOk, printOut, printErr) = RunProcessWithOutput("route", "print 0.0.0.0");
-        _logger.Info($"Current default routes:");
-        foreach (var line in printOut.Split('\n'))
+        // If netsh failed, try `route add` as fallback
+        if (!ok)
         {
-            if (!string.IsNullOrWhiteSpace(line))
-                _logger.Info($"  {line.Trim()}");
+            _logger.Info("netsh route failed, trying route add...");
+            var routeArgs = $"add 0.0.0.0 mask 0.0.0.0 {settings.TunIp} metric 5 if {_tunInterfaceIndex}";
+            var (ok2, output2, err2) = RunProcessWithOutput("route", routeArgs);
+            _logger.Info($"route add: ok={ok2}, output='{output2}', err='{err2}'");
         }
+
+        // Print current routes for verification
+        var (printOk, printOut, _) = RunProcessWithOutput("route", "print 0.0.0.0");
+        _logger.Info("Current default routes:");
+        foreach (var line in printOut.Split('\n'))
+            if (!string.IsNullOrWhiteSpace(line))
+                _logger.Info($"  {line.TrimEnd()}");
 
         _routesInstalled = true;
         _logger.Info("Default route installed through TUN");
@@ -353,38 +421,18 @@ public class TunService
     {
         try
         {
-            var (ok, output, _) = RunProcessWithOutput("route", "delete 0.0.0.0");
-            _logger.Info($"route delete: ok={ok}, output={output}");
+            // Remove via netsh
+            var args = $"interface ipv4 delete routeprefix=0.0.0.0/0 interface=\"{_adapterName}\"";
+            var (ok, output, err) = RunProcessWithOutput("netsh", args);
+            _logger.Info($"netsh route delete: ok={ok}, output='{output}', err='{err}'");
+
+            // Also try route delete
+            RunProcessWithOutput("route", "delete 0.0.0.0");
             _logger.Info("Routes removed");
         }
         catch (Exception ex)
         {
             _logger.Warn($"Error removing routes: {ex.Message}");
-        }
-    }
-
-    private uint GetInterfaceIndex(string adapterName)
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "powershell",
-                Arguments = $"-NoProfile -Command \"(Get-NetAdapter -Name '{adapterName}').ifIndex\"",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-            };
-            using var p = Process.Start(psi)!;
-            var output = p.StandardOutput.ReadToEnd().Trim();
-            p.WaitForExit(5000);
-            _logger.Info($"GetInterfaceIndex: PowerShell output = '{output}'");
-            return uint.TryParse(output, out var idx) ? idx : 0;
-        }
-        catch (Exception ex)
-        {
-            _logger.Error($"GetInterfaceIndex failed: {ex.Message}");
-            return 0;
         }
     }
 
@@ -413,14 +461,4 @@ public class TunService
             return (false, "", ex.Message);
         }
     }
-
-    #region Win32 Helpers for DLL loading
-
-    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    private static extern IntPtr LoadLibrary(string lpFileName);
-
-    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    private static extern bool SetDllDirectory(string lpPathName);
-
-    #endregion
 }
