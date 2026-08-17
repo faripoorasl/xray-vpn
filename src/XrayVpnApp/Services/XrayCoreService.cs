@@ -35,6 +35,7 @@ public class XrayCoreService
     public bool Start(ServerConfig server, AppSettings settings, int tunMode = 1)
     {
         Stop();
+        KillOrphanXrayProcesses();  // Kill any orphan xray.exe from previous runs
 
         if (!File.Exists(XrayExePath))
         {
@@ -43,6 +44,21 @@ public class XrayCoreService
             _logger.Error($"EXE path = {Environment.ProcessPath}");
             _logger.Error($"BaseDirectory = {AppContext.BaseDirectory}");
             return false;
+        }
+
+        // Check if ports are available before starting
+        if (!ArePortsAvailable(settings.SocksPort, settings.HttpPort))
+        {
+            _logger.Error($"Ports {settings.SocksPort} (SOCKS) and/or {settings.HttpPort} (HTTP) are in use.");
+            _logger.Error("Attempting to kill processes using these ports...");
+            KillProcessesOnPort(settings.SocksPort);
+            KillProcessesOnPort(settings.HttpPort);
+            System.Threading.Thread.Sleep(500);
+            if (!ArePortsAvailable(settings.SocksPort, settings.HttpPort))
+            {
+                _logger.Error("Ports still in use. Cannot start Xray.");
+                return false;
+            }
         }
 
         try
@@ -95,8 +111,8 @@ public class XrayCoreService
 
             _logger.Info($"Xray started, PID={_xrayProcess.Id}");
 
-            // Give xray 1.5 seconds to start (or fail)
-            System.Threading.Thread.Sleep(1500);
+            // Give xray 2 seconds to start (or fail)
+            System.Threading.Thread.Sleep(2000);
 
             // Check if process exited prematurely
             if (_xrayProcess.HasExited)
@@ -113,6 +129,126 @@ public class XrayCoreService
             _logger.Error($"Failed to start Xray: {ex.Message}");
             _xrayProcess = null;
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Kill any orphan xray.exe processes (from previous app crashes or hangs).
+    /// </summary>
+    private void KillOrphanXrayProcesses()
+    {
+        try
+        {
+            var selfId = Environment.ProcessId;
+            var xrayProcs = Process.GetProcessesByName("xray");
+            int killed = 0;
+            foreach (var p in xrayProcs)
+            {
+                if (p.Id == selfId) continue;
+                try
+                {
+                    _logger.Info($"Killing orphan xray.exe process (PID={p.Id})");
+                    p.Kill(entireProcessTree: true);
+                    p.WaitForExit(2000);
+                    killed++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn($"Failed to kill PID {p.Id}: {ex.Message}");
+                }
+                finally
+                {
+                    p.Dispose();
+                }
+            }
+            if (killed > 0)
+            {
+                _logger.Info($"Killed {killed} orphan xray.exe process(es)");
+                System.Threading.Thread.Sleep(500);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Warn($"KillOrphanXrayProcesses: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Check if both SOCKS and HTTP ports are free.
+    /// </summary>
+    private bool ArePortsAvailable(int socksPort, int httpPort)
+    {
+        try
+        {
+            var socksTest = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, socksPort);
+            socksTest.Start();
+            socksTest.Stop();
+
+            var httpTest = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, httpPort);
+            httpTest.Start();
+            httpTest.Stop();
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.Warn($"Port check failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Find and kill processes listening on a specific port (Windows only).
+    /// </summary>
+    private void KillProcessesOnPort(int port)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c netstat -ano | findstr :{port}",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+            };
+            using var p = Process.Start(psi)!;
+            var output = p.StandardOutput.ReadToEnd();
+            p.WaitForExit(5000);
+
+            var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var pidsToKill = new System.Collections.Generic.HashSet<int>();
+
+            foreach (var line in lines)
+            {
+                var parts = line.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 5) continue;
+                if (int.TryParse(parts[parts.Length - 1], out var pid) && pid > 0)
+                {
+                    pidsToKill.Add(pid);
+                }
+            }
+
+            foreach (var pid in pidsToKill)
+            {
+                try
+                {
+                    var proc = Process.GetProcessById(pid);
+                    var name = proc.ProcessName;
+                    _logger.Info($"Killing PID {pid} ({name}) holding port {port}");
+                    proc.Kill(entireProcessTree: true);
+                    proc.WaitForExit(2000);
+                    proc.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn($"Failed to kill PID {pid}: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Warn($"KillProcessesOnPort({port}): {ex.Message}");
         }
     }
 
