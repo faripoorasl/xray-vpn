@@ -132,6 +132,28 @@ public class TunService
                 return false;
             }
 
+            // Step 1.5: Remove any existing adapter with the same name (prevents multiple adapters)
+            _logger.Info($"=== TUN Service: Step 1.5 - Cleaning up existing adapter '{settings.TunAdapterName}' ===");
+            try
+            {
+                var existingHandle = WintunNative.WintunOpenAdapter(settings.TunAdapterName);
+                if (existingHandle != IntPtr.Zero)
+                {
+                    _logger.Info($"Found existing adapter, closing it (handle=0x{existingHandle.ToInt64():X})");
+                    WintunNative.WintunCloseAdapter(existingHandle);
+                    System.Threading.Thread.Sleep(1000);
+                    _logger.Info("Existing adapter removed");
+                }
+                else
+                {
+                    _logger.Info("No existing adapter found, will create new");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"Error checking for existing adapter: {ex.Message}");
+            }
+
             // Step 2: Create wintun adapter
             _logger.Info($"=== TUN Service: Step 2/5 - Creating adapter '{settings.TunAdapterName}' ===");
             _adapterHandle = WintunNative.WintunCreateAdapter(
@@ -189,7 +211,7 @@ public class TunService
             var tun2socksArgs = $"--device \"{settings.TunAdapterName}\" " +
                                 $"--proxy socks5://127.0.0.1:{settings.SocksPort} " +
                                 $"--mtu {settings.TunMtu} " +
-                                $"--loglevel silent";
+                                $"--loglevel info";
 
             _logger.Info($"tun2socks.exe {tun2socksArgs}");
 
@@ -301,9 +323,27 @@ public class TunService
 
     private void InstallRoutes(Models.AppSettings settings)
     {
+        // First, try to delete any existing default route through this interface
+        var delArgs = $"delete 0.0.0.0 mask 0.0.0.0 {settings.TunGateway}";
+        var (delOk, delOut, delErr) = RunProcessWithOutput("route", delArgs);
+        _logger.Info($"route {delArgs}: ok={delOk}, output={delOut}, err={delErr}");
+
+        // Small delay to let route table settle
+        System.Threading.Thread.Sleep(300);
+
+        // Now add the new route with low metric (5 = higher priority than default)
         var args = $"add 0.0.0.0 mask 0.0.0.0 {settings.TunGateway} metric 5 if {_tunInterfaceIndex}";
         var (ok, output, err) = RunProcessWithOutput("route", args);
         _logger.Info($"route {args}: ok={ok}, output={output}, err={err}");
+
+        // Verify route was added
+        var (printOk, printOut, printErr) = RunProcessWithOutput("route", "print 0.0.0.0");
+        _logger.Info($"Current default routes:");
+        foreach (var line in printOut.Split('\n'))
+        {
+            if (!string.IsNullOrWhiteSpace(line))
+                _logger.Info($"  {line.Trim()}");
+        }
 
         _routesInstalled = true;
         _logger.Info("Default route installed through TUN");
