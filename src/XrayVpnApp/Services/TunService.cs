@@ -120,15 +120,13 @@ public class TunService
             // Step 3: Find the TUN adapter (tun2socks may name it differently)
             _logger.Info("=== TUN Service: Step 3/5 - Finding TUN adapter ===");
             _adapterName = settings.TunAdapterName;
-            _tunInterfaceIndex = FindTunAdapterIndex(settings.TunAdapterName);
 
+            // Try multiple approaches to find the adapter
+            _tunInterfaceIndex = FindTunAdapterIndex(settings.TunAdapterName);
             if (_tunInterfaceIndex == 0)
             {
-                // Try alternative names
-                _logger.Info("Adapter not found by exact name, searching for similar...");
                 _tunInterfaceIndex = FindTunAdapterIndexFuzzy(settings.TunAdapterName);
             }
-
             if (_tunInterfaceIndex == 0)
             {
                 _logger.Error("Could not find TUN adapter created by tun2socks");
@@ -137,18 +135,21 @@ public class TunService
                 Stop();
                 return false;
             }
-            _logger.Info($"Found TUN adapter: index={_tunInterfaceIndex}");
 
-            // Step 4: Assign IP address
+            // Get the ACTUAL adapter name from the index (more reliable)
+            _adapterName = GetAdapterNameByIndex(_tunInterfaceIndex);
+            _logger.Info($"Found TUN adapter: index={_tunInterfaceIndex}, actual name='{_adapterName}'");
+
+            // Step 4: Assign IP address using PowerShell (more reliable than netsh)
             _logger.Info($"=== TUN Service: Step 4/5 - Assigning IP {settings.TunIp} ===");
-            AssignIpToAdapter(_adapterName, settings.TunIp, settings.TunMask);
+            AssignIpViaPowerShell(_tunInterfaceIndex, settings.TunIp, "24");
 
             // Verify IP was assigned
             VerifyAdapterIp(_adapterName);
 
-            // Step 5: Install routes
+            // Step 5: Install routes using PowerShell (more reliable than route add)
             _logger.Info("=== TUN Service: Step 5/5 - Installing routes ===");
-            InstallRoutes(settings);
+            InstallRoutesViaPowerShell(_tunInterfaceIndex, settings);
 
             _logger.Info("=== TUN service started successfully ===");
             return true;
@@ -299,33 +300,61 @@ public class TunService
     }
 
     /// <summary>
-    /// Assign IP address to the TUN adapter.
+    /// Get the actual adapter name from its interface index.
     /// </summary>
-    private void AssignIpToAdapter(string adapterName, string ip, string mask)
+    private string GetAdapterNameByIndex(int ifIndex)
     {
         try
         {
-            // Try both with the original name and with " Tunnel" suffix
-            // wintun appends " Tunnel" to adapter names
-            var args = $"interface ip set address name=\"{adapterName}\" static {ip} {mask}";
-            var (ok, output, err) = RunProcessWithOutput("netsh", args);
-            _logger.Info($"netsh assign IP (try 1): ok={ok}, output='{output}', err='{err}'");
+            var psi = new ProcessStartInfo
+            {
+                FileName = "powershell",
+                Arguments = $"-NoProfile -Command \"(Get-NetAdapter -InterfaceIndex {ifIndex} -ErrorAction SilentlyContinue).Name\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+            };
+            using var p = Process.Start(psi)!;
+            var output = p.StandardOutput.ReadToEnd().Trim();
+            p.WaitForExit(5000);
+            return string.IsNullOrEmpty(output) ? $"ifIndex{ifIndex}" : output;
+        }
+        catch
+        {
+            return $"ifIndex{ifIndex}";
+        }
+    }
+
+    /// <summary>
+    /// Assign IP address using PowerShell's New-NetIPAddress (more reliable than netsh).
+    /// Uses interface INDEX instead of name, so adapter name doesn't matter.
+    /// </summary>
+    private void AssignIpViaPowerShell(int ifIndex, string ip, string prefixLength)
+    {
+        try
+        {
+            // First remove any existing IP addresses on the interface
+            var clearArgs = $"-NoProfile -Command \"Get-NetIPAddress -InterfaceIndex {ifIndex} -ErrorAction SilentlyContinue | Remove-NetIPAddress -Confirm:$false -ErrorAction SilentlyContinue\"";
+            var (clearOk, clearOut, clearErr) = RunProcessWithOutput("powershell", clearArgs);
+            _logger.Info($"Clear existing IPs: ok={clearOk}");
+
+            // Now assign the new IP using the interface INDEX (not name)
+            var args = $"-NoProfile -Command \"New-NetIPAddress -InterfaceIndex {ifIndex} -IPAddress {ip} -PrefixLength {prefixLength} -ErrorAction Stop | Out-Null\"";
+            var (ok, output, err) = RunProcessWithOutput("powershell", args);
+            _logger.Info($"New-NetIPAddress: ok={ok}, output='{output}', err='{err}'");
 
             if (!ok)
             {
-                var args2 = $"interface ip set address name=\"{adapterName} Tunnel\" static {ip} {mask}";
-                var (ok2, output2, err2) = RunProcessWithOutput("netsh", args2);
-                _logger.Info($"netsh assign IP (try 2 with ' Tunnel' suffix): ok={ok2}, output='{output2}', err='{err2}'");
-
-                if (ok2)
-                {
-                    _adapterName = $"{adapterName} Tunnel";
-                }
+                // Fallback: try netsh with the actual adapter name
+                _logger.Info("PowerShell failed, trying netsh with actual name...");
+                var netshArgs = $"interface ip set address name=\"{_adapterName}\" static {ip} 255.255.255.0";
+                var (ok2, out2, err2) = RunProcessWithOutput("netsh", netshArgs);
+                _logger.Info($"netsh fallback: ok={ok2}, output='{out2}', err='{err2}'");
             }
         }
         catch (Exception ex)
         {
-            _logger.Error($"AssignIpToAdapter: {ex.Message}");
+            _logger.Error($"AssignIpViaPowerShell: {ex.Message}");
         }
     }
 
@@ -402,47 +431,68 @@ public class TunService
         }
     }
 
-    private void InstallRoutes(Models.AppSettings settings)
+    /// <summary>
+    /// Install default route using PowerShell's New-NetRoute.
+    /// Uses interface INDEX, so adapter name doesn't matter.
+    /// </summary>
+    private void InstallRoutesViaPowerShell(int ifIndex, Models.AppSettings settings)
     {
-        // Use PowerShell's New-NetRoute which is more reliable than `route add`
-        // We route ALL traffic (0.0.0.0/0) through the TUN adapter
-        // The gateway doesn't need to exist - we just need to point to the interface
-
-        // Method 1: Use netsh (more compatible)
-        var args = $"interface ipv4 add routeprefix=0.0.0.0/0 interface=\"{_adapterName}\" nexthop={settings.TunGateway} metric=5";
-        var (ok, output, err) = RunProcessWithOutput("netsh", args);
-        _logger.Info($"netsh route: ok={ok}, output='{output}', err='{err}'");
-
-        // If netsh failed, try `route add` as fallback
-        if (!ok)
+        try
         {
-            _logger.Info("netsh route failed, trying route add...");
-            var routeArgs = $"add 0.0.0.0 mask 0.0.0.0 {settings.TunIp} metric 5 if {_tunInterfaceIndex}";
-            var (ok2, output2, err2) = RunProcessWithOutput("route", routeArgs);
-            _logger.Info($"route add: ok={ok2}, output='{output2}', err='{err2}'");
+            // Use New-NetRoute with the interface index
+            // We DON'T specify -NextHop because the gateway doesn't exist
+            // This creates a route that sends traffic to the interface directly
+            var args = $"-NoProfile -Command \"New-NetRoute -InterfaceIndex {ifIndex} -DestinationPrefix '0.0.0.0/0' -RouteMetric 5 -ErrorAction Stop | Out-Null\"";
+            var (ok, output, err) = RunProcessWithOutput("powershell", args);
+            _logger.Info($"New-NetRoute: ok={ok}, output='{output}', err='{err}'");
+
+            if (!ok)
+            {
+                // Fallback: try with NextHop (the gateway IP)
+                _logger.Info("Trying with NextHop (gateway)...");
+                var args2 = $"-NoProfile -Command \"New-NetRoute -InterfaceIndex {ifIndex} -DestinationPrefix '0.0.0.0/0' -NextHop {settings.TunGateway} -RouteMetric 5 -ErrorAction Stop | Out-Null\"";
+                var (ok2, output2, err2) = RunProcessWithOutput("powershell", args2);
+                _logger.Info($"New-NetRoute with NextHop: ok={ok2}, output='{output2}', err='{err2}'");
+
+                if (!ok2)
+                {
+                    // Last fallback: route add command
+                    _logger.Info("PowerShell failed, trying route add...");
+                    var routeArgs = $"add 0.0.0.0 mask 0.0.0.0 {settings.TunGateway} metric 5 if {ifIndex}";
+                    var (ok3, output3, err3) = RunProcessWithOutput("route", routeArgs);
+                    _logger.Info($"route add: ok={ok3}, output='{output3}', err='{err3}'");
+                }
+            }
+
+            // Print current routes for verification
+            var (printOk, printOut, _) = RunProcessWithOutput("route", "print 0.0.0.0");
+            _logger.Info("Current default routes:");
+            foreach (var line in printOut.Split('\n'))
+                if (!string.IsNullOrWhiteSpace(line))
+                    _logger.Info($"  {line.TrimEnd()}");
+
+            _routesInstalled = true;
+            _logger.Info("Default route installed through TUN");
         }
-
-        // Print current routes for verification
-        var (printOk, printOut, _) = RunProcessWithOutput("route", "print 0.0.0.0");
-        _logger.Info("Current default routes:");
-        foreach (var line in printOut.Split('\n'))
-            if (!string.IsNullOrWhiteSpace(line))
-                _logger.Info($"  {line.TrimEnd()}");
-
-        _routesInstalled = true;
-        _logger.Info("Default route installed through TUN");
+        catch (Exception ex)
+        {
+            _logger.Error($"InstallRoutesViaPowerShell: {ex.Message}");
+        }
     }
 
     private void RemoveRoutes()
     {
         try
         {
-            // Remove via netsh
-            var args = $"interface ipv4 delete routeprefix=0.0.0.0/0 interface=\"{_adapterName}\"";
-            var (ok, output, err) = RunProcessWithOutput("netsh", args);
-            _logger.Info($"netsh route delete: ok={ok}, output='{output}', err='{err}'");
+            // Remove via PowerShell using interface index
+            if (_tunInterfaceIndex > 0)
+            {
+                var args = $"-NoProfile -Command \"Get-NetRoute -InterfaceIndex {_tunInterfaceIndex} -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Remove-NetRoute -Confirm:$false -ErrorAction SilentlyContinue\"";
+                var (ok, output, err) = RunProcessWithOutput("powershell", args);
+                _logger.Info($"PowerShell route delete: ok={ok}, output='{output}', err='{err}'");
+            }
 
-            // Also try route delete
+            // Also try route delete as fallback
             RunProcessWithOutput("route", "delete 0.0.0.0");
             _logger.Info("Routes removed");
         }
